@@ -5,8 +5,20 @@
 # Makefile pro přeložení druhého projektu IOS
 
 
-GCC = -std=gnu99 -Wall -Wextra -Werror -pedantic
+CFLAGS  	= -g -std=c99 -Wextra -Wall -pedantic -O2 -march=native -flto
+DEBUGFLAGS	= -Og -g -rdynamic -std=c11 -Wextra -Wall -pedantic
+CC 			= gcc
 
-all:
+.PHONY: clean
 
-%.o:
+all: main
+
+main.o: main.c
+	$(CC) $(DEBUGFLAGS) -c main.c
+
+main: main.o
+	$(CC) $(DEBUGFLAGS) main.o -o main
+
+
+clean:
+	rm *.o main
