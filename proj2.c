@@ -6,61 +6,104 @@
 
 #include "proj2.h"
 
-int main(int argc, char **argv){
-
-    int NE, NR, TE, TR = 0;
+int main(int argc, char **argv) {
     int action_counter = 1;
-    FILE *file = NULL;
-    void *shem = NULL;
+    args_t args;
+    sem_t semaphores[3];
 
     // Načtení vstupních parametrů
-    if(setup(argc, argv, &NE, &NR, &TE, &TR) == 1)
+    if(setup(argc, argv, &args) == 1)
         exit(1);
 
-    // Otevření souboru pro výpis
-    if((file = fopen("proj2.txt","w")) == NULL)
-    {
-        PRINTERR("Soubor pro vypis se nepodarilo otevrit\n");
-        exit(1);
-    }
+    run_proj(&args);
 
-    // TODO
-    if ((shem = prep_memory(MAP_SIZE)) == MAP_FAILED)
-    {
-        PRINTERR("Sdílenou paměť se nezdažilo namapovat\n");
-        fclose(file);
-    }
-
-    memcpy(shem, "shared\n", 8);
-    memcpy(shem, "shared\n", 8);
-
-    int pid = fork();
-    if(pid == 0)
-    {
-        char dest[10];
-        memcpy(dest, shem,8);
-        printf("Ja jsem dite\n");
-        printf("1 %s\n", dest);
-        memcpy(shem, "shared++\n", 10);
-        exit(1);
-    }
-    else
-    {
-        usleep(500);
-        printf("Ja jsem rodic\n");
-    }
-
-    char fin[10];
-    memcpy(fin, shem,10);
-    printf("2 %s\n", fin);
-
-    munmap(shem, MAP_SIZE);
-
-    fclose(file);
+    fclose(args.file);
 
     return 0;
 }
 
+int run_proj(args_t *args)
+{
+    personal_t personal;
+    personal.active_elves = 0;
+    personal.active_reindeers = 0;
+    personal_t *ptr = &personal;
+    void *shem = NULL;
+
+
+    if ((shem = prep_memory(sizeof(personal_t))) == MAP_FAILED)
+    {
+        PRINTERR("Sdílenou paměť se nezdažilo namapovat\n");
+        return 1;
+    }
+
+    //printf("N of elves %d\n", args->NE);
+    //printf("N of deers %d\n", args->NR);
+    for(int i = 0; (args->NE + args->NR) >= i; ++i)
+    {
+        switch (fork()) {
+            // Dítě vytvořeno
+            case 0:
+                // První proces je Santa
+                if (i == 0)
+                {
+                    santa();
+                    return 0;
+                }
+                LOAD_COUNT(&personal, shem, sizeof(personal_t));
+                // Pokud je ještě třeba, tak se přidá elf
+                if (personal.active_elves < args->NE)
+                {
+                    if (personal.active_elves < args->NE)
+                    {
+                        INC_COUNTER(&personal, shem, active_elves, sizeof(personal_t));
+                        elf(i);
+                    }
+                    return 0;
+                }
+                // Pokud je ještě třeba, tak se přidá sob
+                if (personal.active_reindeers < args->NR)
+                {
+                    if (personal.active_reindeers < args->NR)
+                    {
+                        INC_COUNTER(&personal, shem, active_reindeers, sizeof(personal_t));
+                        deer();
+                    }
+                    return 0;
+                }
+                break;
+            case -1:
+                PRINTERR("Naskytla se chyba pri forkovani procesu\n");
+                return 1;
+            default:
+                break;
+        }
+    }
+
+    close_mem(sizeof(personal_t), shem);
+
+    return 0;
+}
+
+void santa()
+{
+    printf("Santa is here baby\n");
+}
+
+void elf(int elf_id)
+{
+    printf("elf created\n");
+}
+
+void deer()
+{
+    printf("raindeer created\n");
+}
+
+void close_mem(size_t size, void *pointer)
+{
+    munmap(pointer, size);
+}
 
 void* prep_memory(size_t mem_size) {
     int access = PROT_READ | PROT_WRITE;
@@ -70,7 +113,7 @@ void* prep_memory(size_t mem_size) {
     return mmap(NULL, mem_size, access, visibility, -1, 0);
 }
 
-int load_args(char **argv, int *NE, int *NR, int *TE, int *TR)
+int load_args(char **argv, args_t *args)
 {
     int temp = 0;
     for(int i = 1; argv[i]; ++i)
@@ -83,25 +126,25 @@ int load_args(char **argv, int *NE, int *NR, int *TE, int *TR)
                 case 1:
                     if(temp >= 1000)
                         return 1;
-                    *NE = temp;
+                    args->NE = temp;
                     break;
 
                 case 2:
                     if(temp >= 20)
                         return 1;
-                    *NR = temp;
+                    args->NR = temp;
                     break;
 
                 case 3:
                     if(temp >= 1000)
                         return 1;
-                    *TE = temp;
+                    args->TE = temp;
                     break;
 
                 case 4:
                     if(temp >= 1000)
                         return 1;
-                    *TR = temp;
+                    args->TR = temp;
                     break;
                 default:
                     return 1;
@@ -112,7 +155,17 @@ int load_args(char **argv, int *NE, int *NR, int *TE, int *TR)
     return 0;
 }
 
-int setup(int argc, char **argv, int *NE, int *NR, int *TE, int *TR)
+int open_file(args_t *args)
+{
+    if((args->file = fopen("proj2.txt","w")) == NULL)
+    {
+        PRINTERR("Soubor pro vypis se nepodarilo otevrit\n");
+        return 1;
+    }
+    return 0;
+}
+
+int setup(int argc, char **argv, args_t *args)
 {
     if (argc != 5)
     {
@@ -120,11 +173,26 @@ int setup(int argc, char **argv, int *NE, int *NR, int *TE, int *TR)
         return 1;
     }
 
-    if (load_args(argv, NE, NR, TE, TR))
+    if (load_args(argv, args))
     {
         PRINTERR("Nacitani argumentu selhalo\n");
         return 1;
     }
 
+    if (open_file(args))
+    {
+        PRINTERR("Otevreni souboru se nezdarilo\n");
+        return 1;
+    }
+
     return 0;
+}
+
+int get_rand(int roof)
+{
+    int rand_num = 0;
+    srand(time(NULL));
+    rand_num = rand();
+    rand_num %= roof;
+    return rand_num > 0 ? rand_num : rand_num*(-1);
 }

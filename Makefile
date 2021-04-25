@@ -13,7 +13,7 @@ CC 			= gcc
 
 all: proj2
 
-proj2.o: proj2.c
+proj2.o: proj2.c proj2.h
 	$(CC) $(DEBUGFLAGS) -c proj2.c
 
 proj2: proj2.o
@@ -21,4 +21,4 @@ proj2: proj2.o
 
 
 clean:
-	rm *.o *.out proj2
+	rm -f *.o *.out *.txt proj2

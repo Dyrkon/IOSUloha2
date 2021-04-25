@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -19,6 +20,7 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <sys/mman.h>
+#include<time.h>
 
 #define MAP_SIZE 1024
 
@@ -26,23 +28,51 @@
 
 #define PRINTOUT(F, X) fprintf(F,X);
 
+// Přičte k volitelnému počítadlu ve struktuře
+#define INC_COUNTER(S, P, X, N){ \
+    memcpy(S, P, N);             \
+    ((S)->X)++;                  \
+    memcpy(P, S, N);             \
+}
+
+
+#define LOAD_COUNT(T, P, N){ \
+  memcpy(T, P, N);           \
+}
+
+// Seznam semaforůactive_elves
+enum semafors{SANTA, ELF, WRITING};
+
+// Strukt s argumenty a soubory
+typedef struct args
+{
+    int NE;
+    int NR;
+    int TE;
+    int TR;
+    FILE *file;
+}args_t;
+
+typedef struct personal
+{
+    int active_elves;
+    int active_reindeers;
+}personal_t;
+
 /*
  * @brief Načte argumenty pokud jsou validní
  * @param argv prohledávané argumenty
- * @param NE ukazatel na počet stkřítků
- * @param NR ukazatel na počet sobů
- * @param TE ukazatel na maximální čas v milisekundách, po kterou skřítek pracuje samostatně.
- * @param TR ukazatel na maximální čas v milisekundách, o které se sob vrací z dovolené domů.
+ * @param args struct s argumenty a výposovým souborem
  * @return po úspěšném načtení vrací 0 jinak 1
  */
-int load_args(char **argv, int *NE, int *NR, int *TE, int *TR);
+int load_args(char **argv, args_t *args);
 
 /*
  * @brief Načte potřební porměné pro běh porgramu
- * @param parament počet argumentů, argumenty, výpisový soubor, všechy počítadla
- * @return po úspěšném otevření vrací 0 jinak 1
+ * @param params argumenty, výpisový soubor, všechy počítadla
+ * @return po úspěšném nastavení vrací 0 jinak 1
  */
-int setup(int argc, char **argv, int *NE, int *NR, int *TE, int *TR);
+int setup(int argc, char **argv, args_t *args);
 
 /*
  * @brief Připravý sdílenou paměť
@@ -50,5 +80,39 @@ int setup(int argc, char **argv, int *NE, int *NR, int *TE, int *TR);
  * @return vrací adresu paměti
  */
 void* prep_memory(size_t mem_size);
+
+/*
+ * @brief Uvolní sdílenou mapu
+ * @param size velikost paměti
+ * @param pointer ukazatel na paměť
+ */
+void close_mem(size_t size, void *pointer);
+
+/*
+ * @brief Otevře soubor pro výpis
+ * @param args struct s argumenty a výposovým souborem
+ * @retun po úspěšném otevření vrací 0 jinak 1
+ */
+int open_file(args_t *args);
+
+/*
+ * @brief Spustí projekt
+ * @param args vstupní argumenty
+ * @retun po úspěšném otevření vrací 0 jinak 1
+ */
+int run_proj(args_t *args);
+
+/*
+ * @brief Vrátí náhodné číslo menší než strop
+ * @param roof maximální hodnota
+ * @retun náhodné číslo
+ */
+int get_rand(int roof);
+
+void deer();
+
+void elf(int elf_id);
+
+void santa();
 
 #endif //IOS_PROJ2_PROJ2_H
