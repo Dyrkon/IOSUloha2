@@ -9,5 +9,6 @@
 
 int main(void){
 
+    usleep(10);
     return 0;
 }
