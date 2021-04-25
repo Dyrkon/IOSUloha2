@@ -5,8 +5,8 @@
 # Makefile pro přeložení druhého projektu IOS
 
 
-CFLAGS  	= -g -std=c11 -Wextra -Wall -pedantic -O2 -march=native -flto
-DEBUGFLAGS	= -Og -g -rdynamic -std=c11 -Wextra -Wall -pedantic
+CFLAGS  	= -g -std=gnu99 -Wextra -Wall -pedantic -O2 -march=native -flto
+DEBUGFLAGS	= -Og -g -rdynamic -std=gnu99 -Wextra -Wall -pedantic
 CC 			= gcc
 
 .PHONY: clean
@@ -21,4 +21,4 @@ proj2: proj2.o
 
 
 clean:
-	rm *.o proj
+	rm *.o *.out proj2
