@@ -27,7 +27,6 @@ int run_proj(args_t *args)
     personal_t personal;
     personal.active_elves = 0;
     personal.active_reindeers = 0;
-    personal_t *ptr = &personal;
     void *shem = NULL;
 
 
@@ -87,16 +86,19 @@ int run_proj(args_t *args)
 
 void santa()
 {
+    // TODO
     printf("Santa is here baby\n");
 }
 
 void elf(int elf_id)
 {
+    // TODO
     printf("elf created\n");
 }
 
 void deer()
 {
+    // TODO
     printf("raindeer created\n");
 }
 
