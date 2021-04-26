@@ -21,27 +21,25 @@
 #include <semaphore.h>
 #include <sys/mman.h>
 #include<time.h>
+#include <stdbool.h>
 
-#define MAP_SIZE 1024
+#define N_SEMAPHORES 5
 
 #define PRINTERR(E) fprintf(stderr, E)
 
-#define PRINTOUT(F, X) fprintf(F,X);
-
-// Přičte k volitelnému počítadlu ve struktuře
-#define INC_COUNTER(S, P, X, N){ \
-    memcpy(S, P, N);             \
-    ((S)->X)++;                  \
-    memcpy(P, S, N);             \
+#define PRIN_FLUSHT(F, ...) {     \
+        fprintf(F, __VA_ARGS__);  \
+        fflush(NULL);             \
 }
 
+// Makro pro zamknutí semaforu
+#define LOC_SEM(X) sem_wait(sems[X])
 
-#define LOAD_COUNT(T, P, N){ \
-  memcpy(T, P, N);           \
-}
+// Makro pro odemknutí semaforu
+#define UNLOC_SEM(X) sem_post(sems[X])
 
 // Seznam semaforůactive_elves
-enum semafors{SANTA, ELF, WRITING};
+enum semaphores_e{SANTA=0, ELF, REINDEER, MUTEX, HITCH};
 
 // Strukt s argumenty a soubory
 typedef struct args
@@ -53,11 +51,16 @@ typedef struct args
     FILE *file;
 }args_t;
 
-typedef struct personal
+// Strukt se stavem Santova personálu
+typedef struct personnel
 {
+    int action_counter;
     int active_elves;
     int active_reindeers;
-}personal_t;
+    int reindeers_back;
+    bool christmas_closed;
+}personnel_t;
+
 
 /*
  * @brief Načte argumenty pokud jsou validní
@@ -89,6 +92,14 @@ void* prep_memory(size_t mem_size);
 void close_mem(size_t size, void *pointer);
 
 /*
+ * @brief Namapuje do paměti semafory
+ * @param semaphs pole ukazatelů na semafory
+ * @param Nsems počet semaforů
+ * @return po úspěšném namapování vrací 0 jinak 1
+ */
+int prep_sems(sem_t **semaphs, int Nsems);
+
+/*
  * @brief Otevře soubor pro výpis
  * @param args struct s argumenty a výposovým souborem
  * @retun po úspěšném otevření vrací 0 jinak 1
@@ -105,14 +116,29 @@ int run_proj(args_t *args);
 /*
  * @brief Vrátí náhodné číslo menší než strop
  * @param roof maximální hodnota
+ * @param floor minimální hodnota
  * @retun náhodné číslo
  */
-int get_rand(int roof);
+int get_rand(int floor, int roof);
 
-void deer();
+/*
+ * @brief Proces sob
+ * @param rdID id soba
+ * @param args argumenty
+ * @param shem ukazatel do sdílené paměti
+ * @param sems semafory
+ */
+void deer(int rdID, args_t *args, void *shem, sem_t **sems);
 
-void elf(int elf_id);
+/*
+ * @brief Proces elf
+ * @param elfID id elfa
+ */
+void elf(int elfID);
 
+/*
+ * @brief Proces santa
+ */
 void santa();
 
 #endif //IOS_PROJ2_PROJ2_H

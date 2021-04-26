@@ -9,7 +9,6 @@
 int main(int argc, char **argv) {
     int action_counter = 1;
     args_t args;
-    sem_t semaphores[3];
 
     // Načtení vstupních parametrů
     if(setup(argc, argv, &args) == 1)
@@ -24,49 +23,47 @@ int main(int argc, char **argv) {
 
 int run_proj(args_t *args)
 {
-    personal_t personal;
-    personal.active_elves = 0;
-    personal.active_reindeers = 0;
+    personnel_t personnel;
+    sem_t **semaphores = NULL;
+    personnel.active_elves = 0;
+    personnel.active_reindeers = 0;
+    personnel.reindeers_back = 0;
     void *shem = NULL;
 
-
-    if ((shem = prep_memory(sizeof(personal_t))) == MAP_FAILED)
-    {
+    if ((shem = prep_memory(sizeof(personnel_t))) == MAP_FAILED) {
         PRINTERR("Sdílenou paměť se nezdažilo namapovat\n");
         return 1;
     }
 
-    //printf("N of elves %d\n", args->NE);
-    //printf("N of deers %d\n", args->NR);
+    if (prep_sems(semaphores, N_SEMAPHORES)){
+        PRINTERR("Semafory se nezdažilo namapovat\n");
+        return 1;
+    }
+
     for(int i = 0; (args->NE + args->NR) >= i; ++i)
     {
         switch (fork()) {
             // Dítě vytvořeno
             case 0:
                 // První proces je Santa
-                if (i == 0)
-                {
+                if (i == 0) {
                     santa();
                     return 0;
                 }
-                LOAD_COUNT(&personal, shem, sizeof(personal_t));
                 // Pokud je ještě třeba, tak se přidá elf
-                if (personal.active_elves < args->NE)
-                {
-                    if (personal.active_elves < args->NE)
-                    {
-                        INC_COUNTER(&personal, shem, active_elves, sizeof(personal_t));
-                        elf(i);
+                if (((personnel_t*)shem)->active_elves < args->NE) {
+                    if (personnel.active_elves < args->NE) {
+                        ((personnel_t*)shem)->active_elves++;
+                        elf(((personnel_t*)shem)->active_elves);
                     }
                     return 0;
                 }
                 // Pokud je ještě třeba, tak se přidá sob
-                if (personal.active_reindeers < args->NR)
-                {
-                    if (personal.active_reindeers < args->NR)
+                if (((personnel_t*)shem)->active_reindeers < args->NR) {
+                    if (personnel.active_reindeers < args->NR)
                     {
-                        INC_COUNTER(&personal, shem, active_reindeers, sizeof(personal_t));
-                        deer();
+                        ((personnel_t*)shem)->active_reindeers++;
+                        deer(((personnel_t*)shem)->active_reindeers, args, shem, semaphores);
                     }
                     return 0;
                 }
@@ -79,7 +76,7 @@ int run_proj(args_t *args)
         }
     }
 
-    close_mem(sizeof(personal_t), shem);
+    close_mem(sizeof(personnel_t), shem);
 
     return 0;
 }
@@ -88,31 +85,89 @@ void santa()
 {
     // TODO
     printf("Santa is here baby\n");
+
 }
 
-void elf(int elf_id)
+void elf(int elfID)
 {
     // TODO
     printf("elf created\n");
 }
 
-void deer()
+/*
+ * 1.Každý sob je identifikován číslem rdID, 0<rdID<=NR
+ * 2.Po spuštění vypíše: A: RD rdID: rstarted
+ * 3.Čas na dovolené modelujte voláním usleep na náhodný interval <TR/2,TR>
+ * 4.Po návratu z letní dovolené vypíše: A: RD rdID: return home a následně čeká, než ho Santa zapřáhne k saním.
+ *   Pokud je posledním sobem, který se vrátil z dovolené, tak vzbudí Santu.
+ * 5.Po zapřažení do saní vypíše: A: RD rdID: get hitched a následně proces končí
+*/
+// TODO write to file instead of stdout
+void deer(int rdID, args_t *args, void *shem, sem_t **sems)
 {
-    // TODO
-    printf("raindeer created\n");
+    // TODO test
+
+    // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
+    LOC_SEM(MUTEX);
+    PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(((personnel_t *)shem)->action_counter), rdID);
+    if (((personnel_t *)args)->reindeers_back == 9)
+        UNLOC_SEM(SANTA);
+    UNLOC_SEM(MUTEX);
+
+    // Dovolená
+    usleep(get_rand(args->TR/2, args->TR));
+
+    // Sob se vrátí z dovolené
+    LOC_SEM(MUTEX);
+    PRIN_FLUSHT(stdout, "%d: RD %d: return\n", ++(((personnel_t *)shem)->action_counter), rdID);
+    ((personnel_t *)args)->reindeers_back++;
+    UNLOC_SEM(MUTEX);
+
+    LOC_SEM(REINDEER);
+    PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(((personnel_t *)shem)->action_counter), rdID);
+}
+
+int prep_sems(sem_t **semaphs, int Nsems)
+{
+    for(int i = 0; i < Nsems; ++i)
+    {
+        if ((semaphs[i] = prep_memory(sizeof(sem_t))) == MAP_FAILED)
+        {
+            for(int j = 0; j < i; j++)
+            {
+                if (j != 0) {
+                    if((sem_destroy(semaphs[j-1])) == -1)
+                        PRINTERR("Nepodarilo se uvolnit semafor\n");
+                }
+                close_mem(sizeof(sem_t), semaphs[j]);
+            }
+            return 1;
+        }
+        if((sem_init(semaphs[i], 1, 0)) == -1)
+        {
+            for(int j = 0; j < i; j++)
+            {
+                if((sem_destroy(semaphs[j])) == -1)
+                    PRINTERR("Nepodarilo se uvolnit semafor\n");
+                close_mem(sizeof(sem_t), semaphs[j]);
+            }
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void* prep_memory(size_t mem_size) {
+    int access = PROT_READ | PROT_WRITE;
+    int visibility = MAP_SHARED | MAP_ANONYMOUS;
+
+    return mmap(NULL, mem_size, access, visibility, 0, 0);
 }
 
 void close_mem(size_t size, void *pointer)
 {
     munmap(pointer, size);
-}
-
-void* prep_memory(size_t mem_size) {
-    int access = PROT_READ | PROT_WRITE;
-
-    int visibility = MAP_SHARED | MAP_ANONYMOUS;
-
-    return mmap(NULL, mem_size, access, visibility, -1, 0);
 }
 
 int load_args(char **argv, args_t *args)
@@ -190,11 +245,8 @@ int setup(int argc, char **argv, args_t *args)
     return 0;
 }
 
-int get_rand(int roof)
+int get_rand(int floor, int roof)
 {
-    int rand_num = 0;
     srand(time(NULL));
-    rand_num = rand();
-    rand_num %= roof;
-    return rand_num > 0 ? rand_num : rand_num*(-1);
+    return (rand() % (roof - floor + 1)) + floor;
 }

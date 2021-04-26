@@ -7,6 +7,7 @@
 
 CFLAGS  	= -g -std=gnu99 -Wextra -Wall -pedantic -O2 -march=native -flto
 DEBUGFLAGS	= -Og -g -rdynamic -std=gnu99 -Wextra -Wall -pedantic
+ADDITIONAL	= -pthread
 CC 			= gcc
 
 .PHONY: clean
@@ -14,10 +15,10 @@ CC 			= gcc
 all: proj2
 
 proj2.o: proj2.c proj2.h
-	$(CC) $(DEBUGFLAGS) -c proj2.c
+	$(CC) $(DEBUGFLAGS) -c proj2.c $(ADDITIONAL)
 
 proj2: proj2.o
-	$(CC) $(DEBUGFLAGS) proj2.o -o proj2
+	$(CC) $(DEBUGFLAGS) proj2.o -o proj2 $(ADDITIONAL)
 
 
 clean:
