@@ -133,8 +133,11 @@ void deer(int rdID, args_t *args, void *shem, sem_t *sems[]);
 /*
  * @brief Proces elf
  * @param elfID id elfa
+ * @param args argumenty
+ * @param shem ukazatel do sdílené paměti
+ * @param sems semafory
  */
-void elf(int elfID);
+void elf(int elfID, args_t *args, void *shem, sem_t *sems[]);
 
 /*
  * @brief Proces santa

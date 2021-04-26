@@ -54,7 +54,7 @@ int run_proj(args_t *args)
                 if (((personnel_t*)shem)->active_elves < args->NE) {
                     if (personnel.active_elves < args->NE) {
                         ((personnel_t*)shem)->active_elves++;
-                        elf(((personnel_t*)shem)->active_elves);
+                        elf(((personnel_t*)shem)->active_elves, args, shem, semaphores);
                     }
                     return 0;
                 }
@@ -88,10 +88,14 @@ void santa()
 
 }
 
-void elf(int elfID)
+void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
 {
     // TODO
-    printf("elf created\n");
+
+    PRIN_FLUSHT(stdout, "%d: Elf %d: started\n", ++(((personnel_t *)shem)->action_counter), elfID);
+
+    // Skřítek pracuje
+    usleep(get_rand(0, args->TE));
 }
 
 /*
@@ -109,7 +113,7 @@ void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
 
     // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
     //LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(((personnel_t *)shem)->action_counter), rdID);
+    PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(((personnel_t *)shem)->action_counter), rdID)
     if (((personnel_t *)args)->reindeers_back == 9)
         UNLOC_SEM(SANTA);
     //UNLOC_SEM(MUTEX);
