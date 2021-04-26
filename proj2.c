@@ -23,12 +23,12 @@ int main(int argc, char **argv) {
 
 int run_proj(args_t *args)
 {
+    void *shem = NULL;
+    sem_t *semaphores[N_SEMAPHORES];
     personnel_t personnel;
-    sem_t **semaphores = NULL;
     personnel.active_elves = 0;
     personnel.active_reindeers = 0;
     personnel.reindeers_back = 0;
-    void *shem = NULL;
 
     if ((shem = prep_memory(sizeof(personnel_t))) == MAP_FAILED) {
         PRINTERR("Sdílenou paměť se nezdažilo namapovat\n");
@@ -103,31 +103,31 @@ void elf(int elfID)
  * 5.Po zapřažení do saní vypíše: A: RD rdID: get hitched a následně proces končí
 */
 // TODO write to file instead of stdout
-void deer(int rdID, args_t *args, void *shem, sem_t **sems)
+void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
 {
-    // TODO test
+    // TODO resolve MUTEX
 
     // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
-    LOC_SEM(MUTEX);
+    //LOC_SEM(MUTEX);
     PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(((personnel_t *)shem)->action_counter), rdID);
     if (((personnel_t *)args)->reindeers_back == 9)
         UNLOC_SEM(SANTA);
-    UNLOC_SEM(MUTEX);
+    //UNLOC_SEM(MUTEX);
 
     // Dovolená
     usleep(get_rand(args->TR/2, args->TR));
 
     // Sob se vrátí z dovolené
-    LOC_SEM(MUTEX);
+    //LOC_SEM(MUTEX);
     PRIN_FLUSHT(stdout, "%d: RD %d: return\n", ++(((personnel_t *)shem)->action_counter), rdID);
     ((personnel_t *)args)->reindeers_back++;
-    UNLOC_SEM(MUTEX);
+    //UNLOC_SEM(MUTEX);
 
     LOC_SEM(REINDEER);
     PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(((personnel_t *)shem)->action_counter), rdID);
 }
 
-int prep_sems(sem_t **semaphs, int Nsems)
+int prep_sems(sem_t *semaphs[], int Nsems)
 {
     for(int i = 0; i < Nsems; ++i)
     {

@@ -97,7 +97,7 @@ void close_mem(size_t size, void *pointer);
  * @param Nsems počet semaforů
  * @return po úspěšném namapování vrací 0 jinak 1
  */
-int prep_sems(sem_t **semaphs, int Nsems);
+int prep_sems(sem_t *semaphs[], int Nsems);
 
 /*
  * @brief Otevře soubor pro výpis
@@ -128,7 +128,7 @@ int get_rand(int floor, int roof);
  * @param shem ukazatel do sdílené paměti
  * @param sems semafory
  */
-void deer(int rdID, args_t *args, void *shem, sem_t **sems);
+void deer(int rdID, args_t *args, void *shem, sem_t *sems[]);
 
 /*
  * @brief Proces elf
