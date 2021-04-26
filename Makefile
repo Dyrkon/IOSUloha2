@@ -22,3 +22,6 @@ proj2: proj2.o
 
 clean:
 	rm -f *.o *.out *.txt proj2
+
+pack: clean
+	zip proj2.zip *.c *.h Makefile

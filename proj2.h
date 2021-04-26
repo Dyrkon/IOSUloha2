@@ -21,27 +21,15 @@
 #include <semaphore.h>
 #include <sys/mman.h>
 #include<time.h>
-
-#define MAP_SIZE 1024
+#include <stdbool.h>
 
 #define PRINTERR(E) fprintf(stderr, E)
 
 #define PRINTOUT(F, X) fprintf(F,X);
 
-// Přičte k volitelnému počítadlu ve struktuře
-#define INC_COUNTER(S, P, X, N){ \
-    memcpy(S, P, N);             \
-    ((S)->X)++;                  \
-    memcpy(P, S, N);             \
-}
-
-
-#define LOAD_COUNT(T, P, N){ \
-  memcpy(T, P, N);           \
-}
 
 // Seznam semaforůactive_elves
-enum semafors{SANTA, ELF, WRITING};
+enum semafors{SANTA, ELF, WORKING};
 
 // Strukt s argumenty a soubory
 typedef struct args
@@ -53,11 +41,14 @@ typedef struct args
     FILE *file;
 }args_t;
 
-typedef struct personal
+typedef struct personnel
 {
     int active_elves;
     int active_reindeers;
-}personal_t;
+    int elves_in_line;
+    int reindeers_on_holidays;
+    bool christmas_closed;
+}personnel_t;
 
 /*
  * @brief Načte argumenty pokud jsou validní
@@ -109,7 +100,7 @@ int run_proj(args_t *args);
  */
 int get_rand(int roof);
 
-void deer();
+void deer(int deer_id);
 
 void elf(int elf_id);
 

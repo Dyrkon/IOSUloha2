@@ -24,20 +24,18 @@ int main(int argc, char **argv) {
 
 int run_proj(args_t *args)
 {
-    personal_t personal;
-    personal.active_elves = 0;
-    personal.active_reindeers = 0;
+    personnel_t personnel;
+    personnel.active_elves = 0;
+    personnel.active_reindeers = 0;
     void *shem = NULL;
 
 
-    if ((shem = prep_memory(sizeof(personal_t))) == MAP_FAILED)
+    if ((shem = prep_memory(sizeof(personnel_t))) == MAP_FAILED)
     {
         PRINTERR("Sdílenou paměť se nezdažilo namapovat\n");
         return 1;
     }
 
-    //printf("N of elves %d\n", args->NE);
-    //printf("N of deers %d\n", args->NR);
     for(int i = 0; (args->NE + args->NR) >= i; ++i)
     {
         switch (fork()) {
@@ -49,24 +47,23 @@ int run_proj(args_t *args)
                     santa();
                     return 0;
                 }
-                LOAD_COUNT(&personal, shem, sizeof(personal_t));
                 // Pokud je ještě třeba, tak se přidá elf
-                if (personal.active_elves < args->NE)
+                if (((personnel_t*)shem)->active_elves < args->NE)
                 {
-                    if (personal.active_elves < args->NE)
+                    if (personnel.active_elves < args->NE)
                     {
-                        INC_COUNTER(&personal, shem, active_elves, sizeof(personal_t));
-                        elf(i);
+                        ((personnel_t*)shem)->active_elves++;
+                        elf(((personnel_t*)shem)->active_elves-1);
                     }
                     return 0;
                 }
                 // Pokud je ještě třeba, tak se přidá sob
-                if (personal.active_reindeers < args->NR)
+                if (((personnel_t*)shem)->active_reindeers < args->NR)
                 {
-                    if (personal.active_reindeers < args->NR)
+                    if (personnel.active_reindeers < args->NR)
                     {
-                        INC_COUNTER(&personal, shem, active_reindeers, sizeof(personal_t));
-                        deer();
+                        ((personnel_t*)shem)->active_reindeers++;
+                        deer(((personnel_t*)shem)->active_reindeers-1);
                     }
                     return 0;
                 }
@@ -79,7 +76,7 @@ int run_proj(args_t *args)
         }
     }
 
-    close_mem(sizeof(personal_t), shem);
+    close_mem(sizeof(personnel_t), shem);
 
     return 0;
 }
@@ -93,13 +90,13 @@ void santa()
 void elf(int elf_id)
 {
     // TODO
-    printf("elf created\n");
+    printf("N %d elf created\n", elf_id);
 }
 
-void deer()
+void deer(int deer_id)
 {
     // TODO
-    printf("raindeer created\n");
+    printf("N %d raindeer created\n", deer_id);
 }
 
 void close_mem(size_t size, void *pointer)
