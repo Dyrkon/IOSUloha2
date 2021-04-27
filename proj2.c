@@ -7,7 +7,6 @@
 #include "proj2.h"
 
 int main(int argc, char **argv) {
-    int action_counter = 1;
     args_t args;
 
     // Načtení vstupních parametrů
@@ -84,6 +83,7 @@ int run_proj(args_t *args)
     }
 
     close_mem(sizeof(personnel_t), shem);
+    close_sems(sems, N_SEMAPHORES);
 
     return 0;
 }
@@ -105,11 +105,14 @@ void santa(args_t *args, void *shem, sem_t *sems[])
     if(((personnel_t *)shem)->reindeers_back == 9)
     {
         PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(((personnel_t *)shem)->action_counter));
-
+        UNLOC_SEM(REINDEER);
+        ((personnel_t *)shem)->workshop_empty = true;
+        ((personnel_t *)shem)->christmas_closed = true;
     }
     else if(((personnel_t *)shem)->elves_in_line == 3)
     {
         PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(((personnel_t *)shem)->action_counter));
+        UNLOC_SEM(ELF);
     }
 }
 
@@ -143,12 +146,15 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
         !((personnel_t *)shem)->christmas_closed &&
         ((personnel_t *)shem)->elves_in_line == 3)
     {
-        // UNLOC_SEM(SANTA);
+        UNLOC_SEM(SANTA);
+        LOC_SEM(ELF);
         PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(((personnel_t *)shem)->action_counter), elfID);
     }
 
     if (((personnel_t *)shem)->christmas_closed)
         PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(((personnel_t *)shem)->action_counter), elfID);
+
+    exit(1);
 }
 
 /*
@@ -167,7 +173,7 @@ void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
     // LOC_SEM(MUTEX);
     PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(((personnel_t *)shem)->action_counter), rdID)
     if (((personnel_t *)args)->reindeers_back == 9)
-        // UNLOC_SEM(SANTA);
+        UNLOC_SEM(SANTA);
     // UNLOC_SEM(MUTEX);
 
     // Dovolená
@@ -179,7 +185,7 @@ void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
     ((personnel_t *)args)->reindeers_back++;
     // UNLOC_SEM(MUTEX);
 
-    // LOC_SEM(REINDEER);
+    LOC_SEM(REINDEER);
     PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(((personnel_t *)shem)->action_counter), rdID);
 }
 
@@ -212,6 +218,19 @@ int prep_sems(sem_t *semaphs[], int Nsems)
     }
 
     return 0;
+}
+
+int close_sems(sem_t *semaphs[], int Nsems) {
+    int result = 0;
+    for (int i = 0; i < Nsems; ++i)
+    {
+        if((sem_destroy(semaphs[i])) == -1)
+            PRINTERR("Nepodarilo se uvolnit semafor\n");
+        close_mem(sizeof(sem_t), semaphs[i]);
+        if (result != 1)
+            result = 1;
+    }
+    return result;
 }
 
 void* prep_memory(size_t mem_size) {

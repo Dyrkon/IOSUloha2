@@ -102,6 +102,14 @@ void close_mem(size_t size, void *pointer);
 int prep_sems(sem_t *semaphs[], int Nsems);
 
 /*
+ * @brief Vymaže semafory z paměti
+ * @param semaphs pole ukazatelů na semafory
+ * @param Nsems počet semaforů
+ * @return po úspěšném vymazání vrací 0 jinak 1
+ */
+int close_sems(sem_t *semaphs[], int Nsems);
+
+/*
  * @brief Otevře soubor pro výpis
  * @param args struct s argumenty a výposovým souborem
  * @retun po úspěšném otevření vrací 0 jinak 1
