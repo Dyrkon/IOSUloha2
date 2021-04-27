@@ -24,18 +24,21 @@ int main(int argc, char **argv) {
 int run_proj(args_t *args)
 {
     void *shem = NULL;
-    sem_t *semaphores[N_SEMAPHORES];
+    sem_t *sems[N_SEMAPHORES];
     personnel_t personnel;
     personnel.active_elves = 0;
     personnel.active_reindeers = 0;
     personnel.reindeers_back = 0;
+    personnel.elves_in_line = 0;
+    personnel.christmas_closed = false;
+    personnel.workshop_empty = true;
 
     if ((shem = prep_memory(sizeof(personnel_t))) == MAP_FAILED) {
         PRINTERR("Sdílenou paměť se nezdažilo namapovat\n");
         return 1;
     }
 
-    if (prep_sems(semaphores, N_SEMAPHORES)){
+    if (prep_sems(sems, N_SEMAPHORES)){
         PRINTERR("Semafory se nezdažilo namapovat\n");
         return 1;
     }
@@ -53,8 +56,10 @@ int run_proj(args_t *args)
                 // Pokud je ještě třeba, tak se přidá elf
                 if (((personnel_t*)shem)->active_elves < args->NE) {
                     if (personnel.active_elves < args->NE) {
+                        // LOC_SEM(MUTEX);
                         ((personnel_t*)shem)->active_elves++;
-                        elf(((personnel_t*)shem)->active_elves, args, shem, semaphores);
+                        // UNLOC_SEM(MUTEX);
+                        elf(((personnel_t*)shem)->active_elves, args, shem, sems);
                     }
                     return 0;
                 }
@@ -62,8 +67,10 @@ int run_proj(args_t *args)
                 if (((personnel_t*)shem)->active_reindeers < args->NR) {
                     if (personnel.active_reindeers < args->NR)
                     {
+                        // LOC_SEM(MUTEX);
                         ((personnel_t*)shem)->active_reindeers++;
-                        deer(((personnel_t*)shem)->active_reindeers, args, shem, semaphores);
+                        // UNLOC_SEM(MUTEX);
+                        deer(((personnel_t*)shem)->active_reindeers, args, shem, sems);
                     }
                     return 0;
                 }
@@ -88,6 +95,20 @@ void santa()
 
 }
 
+/*
+ * 1.Každý skřítek je unikátně identifikován číslem elfID. 0<elfID<=NE
+ * 2.Po spuštění vypíše: A: Elf elfID: started
+ * 3.Samostatnou práci modelujte voláním funkce usleep na náhodný čas v intervalu <0,TE>.
+ * 4.Když skončí samostatnou práci, potřebuje pomoc od Santy.
+ *      Vypíše: A: Elf elfID: need help a zařadí se do fronty před Santovou dílnou.
+ * 5.Pokud je třetí ve frontě před dílnou, dílna je prázdná a na dílně není cedule „Vánoce – zavřeno“,
+ *      tak společně s prvním a druhým z fronty vstoupí do dílny a vzbudí Santu.
+ * 6.Skřítek v dílně dostane pomoc a vypíše: A: Elf elfID: get help  (na pořadí pomoci skřítkům v dílně nezáleží)
+ * 7.Po obdržení pomoci ihned odchází z dílny a pokud je dílna již volná,
+ *      tak při odchodu z dílny může upozornit čekající skřítky, že už je volno (volitelné).
+ * 8.Pokud je na dveřích dílny nápis „Vánoce – zavřeno“ vypíše: A: Elf elfID: taking holidays a proces ihned skončí
+ */
+
 void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
 {
     // TODO
@@ -96,6 +117,19 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
 
     // Skřítek pracuje
     usleep(get_rand(0, args->TE));
+
+    PRIN_FLUSHT(stdout, "%d: Elf %d: need help\n", ++(((personnel_t *)shem)->action_counter), elfID);
+    ((personnel_t *)shem)->elves_in_line++;
+    if (((personnel_t *)shem)->workshop_empty &&
+        !((personnel_t *)shem)->christmas_closed &&
+        ((personnel_t *)shem)->elves_in_line == 3)
+    {
+        // UNLOC_SEM(SANTA);
+        PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(((personnel_t *)shem)->action_counter), elfID);
+    }
+
+    if (((personnel_t *)shem)->christmas_closed)
+        PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(((personnel_t *)shem)->action_counter), elfID);
 }
 
 /*
@@ -112,22 +146,22 @@ void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
     // TODO resolve MUTEX
 
     // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
-    //LOC_SEM(MUTEX);
+    // LOC_SEM(MUTEX);
     PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(((personnel_t *)shem)->action_counter), rdID)
     if (((personnel_t *)args)->reindeers_back == 9)
-        UNLOC_SEM(SANTA);
-    //UNLOC_SEM(MUTEX);
+        // UNLOC_SEM(SANTA);
+    // UNLOC_SEM(MUTEX);
 
     // Dovolená
     usleep(get_rand(args->TR/2, args->TR));
 
     // Sob se vrátí z dovolené
-    //LOC_SEM(MUTEX);
+    // LOC_SEM(MUTEX);
     PRIN_FLUSHT(stdout, "%d: RD %d: return\n", ++(((personnel_t *)shem)->action_counter), rdID);
     ((personnel_t *)args)->reindeers_back++;
-    //UNLOC_SEM(MUTEX);
+    // UNLOC_SEM(MUTEX);
 
-    LOC_SEM(REINDEER);
+    // LOC_SEM(REINDEER);
     PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(((personnel_t *)shem)->action_counter), rdID);
 }
 

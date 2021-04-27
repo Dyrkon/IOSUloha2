@@ -58,7 +58,9 @@ typedef struct personnel
     int active_elves;
     int active_reindeers;
     int reindeers_back;
+    int elves_in_line;
     bool christmas_closed;
+    bool workshop_empty;
 }personnel_t;
 
 
