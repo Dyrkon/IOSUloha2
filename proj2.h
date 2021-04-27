@@ -23,6 +23,8 @@
 #include<time.h>
 #include <stdbool.h>
 
+sem_t *s_santa, *s_reindeer, *s_elf, *s_write;
+
 #define N_SEMAPHORES 5
 
 #define PRINTERR(E) fprintf(stderr, E)
@@ -99,7 +101,7 @@ void close_mem(size_t size, void *pointer);
  * @param Nsems počet semaforů
  * @return po úspěšném namapování vrací 0 jinak 1
  */
-int prep_sems(sem_t *semaphs[], int Nsems);
+int prep_sems();
 
 /*
  * @brief Vymaže semafory z paměti
@@ -107,7 +109,7 @@ int prep_sems(sem_t *semaphs[], int Nsems);
  * @param Nsems počet semaforů
  * @return po úspěšném vymazání vrací 0 jinak 1
  */
-int close_sems(sem_t *semaphs[], int Nsems);
+int close_sems();
 
 /*
  * @brief Otevře soubor pro výpis
@@ -138,7 +140,7 @@ int get_rand(int floor, int roof);
  * @param shem ukazatel do sdílené paměti
  * @param sems semafory
  */
-void deer(int rdID, args_t *args, void *shem, sem_t *sems[]);
+void deer(int rdID, args_t *args, void *shem);
 
 /*
  * @brief Proces elf
@@ -147,7 +149,7 @@ void deer(int rdID, args_t *args, void *shem, sem_t *sems[]);
  * @param shem ukazatel do sdílené paměti
  * @param sems semafory
  */
-void elf(int elfID, args_t *args, void *shem, sem_t *sems[]);
+void elf(int elfID, args_t *args, void *shem);
 
 /*
  * @brief Proces santa
@@ -156,6 +158,6 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[]);
  * @param shem ukazatel do sdílené paměti
  * @param sems semafory
  */
-void santa(args_t *args, void *shem, sem_t *sems[]);
+void santa(args_t *args, void *shem);
 
 #endif //IOS_PROJ2_PROJ2_H

@@ -23,7 +23,6 @@ int main(int argc, char **argv) {
 int run_proj(args_t *args)
 {
     void *shem = NULL;
-    sem_t *sems[N_SEMAPHORES];
     personnel_t personnel;
     personnel.active_elves = 0;
     personnel.active_reindeers = 0;
@@ -37,10 +36,7 @@ int run_proj(args_t *args)
         return 1;
     }
 
-    if (prep_sems(sems, N_SEMAPHORES)){
-        PRINTERR("Semafory se nezdažilo namapovat\n");
-        return 1;
-    }
+    prep_sems();
 
     for(int i = 0; (args->NE + args->NR) >= i; ++i)
     {
@@ -49,16 +45,16 @@ int run_proj(args_t *args)
             case 0:
                 // První proces je Santa
                 if (i == 0) {
-                    santa(args, shem, sems);
+                    santa(args, shem);
                     return 0;
                 }
                 // Pokud je ještě třeba, tak se přidá elf
                 if (((personnel_t*)shem)->active_elves < args->NE) {
                     if (personnel.active_elves < args->NE) {
-                        // LOC_SEM(MUTEX);
+                        sem_wait(s_write);
                         ((personnel_t*)shem)->active_elves++;
-                        // UNLOC_SEM(MUTEX);
-                        elf(((personnel_t*)shem)->active_elves, args, shem, sems);
+                        sem_post(s_write);
+                        elf(((personnel_t*)shem)->active_elves, args, shem);
                     }
                     return 0;
                 }
@@ -66,10 +62,10 @@ int run_proj(args_t *args)
                 if (((personnel_t*)shem)->active_reindeers < args->NR) {
                     if (personnel.active_reindeers < args->NR)
                     {
-                        // LOC_SEM(MUTEX);
+                        sem_wait(s_write);
                         ((personnel_t*)shem)->active_reindeers++;
-                        // UNLOC_SEM(MUTEX);
-                        deer(((personnel_t*)shem)->active_reindeers, args, shem, sems);
+                        sem_post(s_write);
+                        deer(((personnel_t*)shem)->active_reindeers, args, shem);
                     }
                     return 0;
                 }
@@ -83,7 +79,7 @@ int run_proj(args_t *args)
     }
 
     close_mem(sizeof(personnel_t), shem);
-    close_sems(sems, N_SEMAPHORES);
+    close_sems();
 
     return 0;
 }
@@ -95,24 +91,34 @@ int run_proj(args_t *args)
  * 4.Po probuzení posledním sobem uzavře dílnu a vypíše: A: Santa: closing workshop a pak jde ihned zapřahat soby do saní.
  * 5.Ve chvíli, kdy jsou zapřažení všichni soby vypíše: A: Santa: Christmas starteda ihned proces končí
 */
-void santa(args_t *args, void *shem, sem_t *sems[])
+void santa(args_t *args, void *shem)
 {
     // TODO
-
+    sem_wait(s_write);
     PRIN_FLUSHT(stdout, "%d: Santa: going to sleep\n", ++(((personnel_t *)shem)->action_counter));
-    LOC_SEM(SANTA);
+    sem_wait(s_santa);
+    sem_post(s_write);
 
-    if(((personnel_t *)shem)->reindeers_back == 9)
+    while (true)
     {
-        PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(((personnel_t *)shem)->action_counter));
-        UNLOC_SEM(REINDEER);
-        ((personnel_t *)shem)->workshop_empty = true;
-        ((personnel_t *)shem)->christmas_closed = true;
-    }
-    else if(((personnel_t *)shem)->elves_in_line == 3)
-    {
-        PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(((personnel_t *)shem)->action_counter));
-        UNLOC_SEM(ELF);
+        if(((personnel_t *)shem)->reindeers_back == 9)
+        {
+            sem_wait(s_write);
+            PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(((personnel_t *)shem)->action_counter));
+            sem_post(s_reindeer);
+            ((personnel_t *)shem)->workshop_empty = true;
+            ((personnel_t *)shem)->christmas_closed = true;
+            sem_post(s_write);
+            return;
+        }
+        else if(((personnel_t *)shem)->elves_in_line == 3)
+        {
+            sem_wait(s_write);
+            PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(((personnel_t *)shem)->action_counter));
+            sem_post(s_elf);
+            sem_post(s_write);
+            return;
+        }
     }
 }
 
@@ -131,28 +137,35 @@ void santa(args_t *args, void *shem, sem_t *sems[])
  *      tak při odchodu z dílny může upozornit čekající skřítky, že už je volno (volitelné).
  * 8.Pokud je na dveřích dílny nápis „Vánoce – zavřeno“ vypíše: A: Elf elfID: taking holidays a proces ihned skončí
  */
-void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
+void elf(int elfID, args_t *args, void *shem)
 {
     // TODO
 
+    sem_wait(s_write);
     PRIN_FLUSHT(stdout, "%d: Elf %d: started\n", ++(((personnel_t *)shem)->action_counter), elfID);
+    sem_post(s_write);
 
     // Skřítek pracuje
     usleep(get_rand(0, args->TE));
 
+    sem_wait(s_write);
     PRIN_FLUSHT(stdout, "%d: Elf %d: need help\n", ++(((personnel_t *)shem)->action_counter), elfID);
+    // PRIN_FLUSHT(stdout, "skritku ready %d\n", ((personnel_t *)shem)->elves_in_line);
     ((personnel_t *)shem)->elves_in_line++;
     if (((personnel_t *)shem)->workshop_empty &&
         !((personnel_t *)shem)->christmas_closed &&
         ((personnel_t *)shem)->elves_in_line == 3)
     {
-        UNLOC_SEM(SANTA);
-        LOC_SEM(ELF);
+        sem_post(s_santa);
+        sem_wait(s_elf);
         PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(((personnel_t *)shem)->action_counter), elfID);
     }
+    sem_post(s_write);
 
+    sem_wait(s_write);
     if (((personnel_t *)shem)->christmas_closed)
         PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(((personnel_t *)shem)->action_counter), elfID);
+    sem_post(s_write);
 
     exit(1);
 }
@@ -165,72 +178,52 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
  *   Pokud je posledním sobem, který se vrátil z dovolené, tak vzbudí Santu.
  * 5.Po zapřažení do saní vypíše: A: RD rdID: get hitched a následně proces končí
 */
-void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
+void deer(int rdID, args_t *args, void *shem)
 {
     // TODO resolve MUTEX
 
     // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
-    // LOC_SEM(MUTEX);
+    sem_wait(s_write);
     PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(((personnel_t *)shem)->action_counter), rdID)
     if (((personnel_t *)args)->reindeers_back == 9)
-        UNLOC_SEM(SANTA);
-    // UNLOC_SEM(MUTEX);
+        sem_post(s_santa);
+    sem_post(s_write);
 
     // Dovolená
     usleep(get_rand(args->TR/2, args->TR));
 
     // Sob se vrátí z dovolené
-    // LOC_SEM(MUTEX);
+    sem_wait(s_write);
     PRIN_FLUSHT(stdout, "%d: RD %d: return\n", ++(((personnel_t *)shem)->action_counter), rdID);
     ((personnel_t *)args)->reindeers_back++;
-    // UNLOC_SEM(MUTEX);
+    sem_post(s_write);
 
-    LOC_SEM(REINDEER);
+    sem_wait(s_reindeer);
     PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(((personnel_t *)shem)->action_counter), rdID);
 }
 
-int prep_sems(sem_t *semaphs[], int Nsems)
+int prep_sems()
 {
-    for(int i = 0; i < Nsems; ++i)
-    {
-        if ((semaphs[i] = prep_memory(sizeof(sem_t))) == MAP_FAILED)
-        {
-            for(int j = 0; j < i; j++)
-            {
-                if (j != 0) {
-                    if((sem_destroy(semaphs[j-1])) == -1)
-                        PRINTERR("Nepodarilo se uvolnit semafor\n");
-                }
-                close_mem(sizeof(sem_t), semaphs[j]);
-            }
-            return 1;
-        }
-        if((sem_init(semaphs[i], 1, 0)) == -1)
-        {
-            for(int j = 0; j < i; j++)
-            {
-                if((sem_destroy(semaphs[j])) == -1)
-                    PRINTERR("Nepodarilo se uvolnit semafor\n");
-                close_mem(sizeof(sem_t), semaphs[j]);
-            }
-            return 1;
-        }
-    }
+    s_elf = prep_memory(sizeof(sem_t));
+    s_santa = prep_memory(sizeof(sem_t));
+    s_reindeer = prep_memory(sizeof(sem_t));
+    s_write = prep_memory(sizeof(sem_t));
 
+    sem_init(s_elf, 1, 0);
+    sem_init(s_santa, 1, 0);
+    sem_init(s_reindeer, 1, 0);
+    sem_init(s_write, 1, 0);
     return 0;
 }
 
-int close_sems(sem_t *semaphs[], int Nsems) {
-    int result = 0;
-    for (int i = 0; i < Nsems; ++i)
-    {
-        if((sem_destroy(semaphs[i])) == -1)
-            PRINTERR("Nepodarilo se uvolnit semafor\n");
-        close_mem(sizeof(sem_t), semaphs[i]);
-        if (result != 1)
-            result = 1;
-    }
-    return result;
+int close_sems() {
+
+    sem_destroy(s_write);
+    sem_destroy(s_reindeer);
+    sem_destroy(s_santa);
+    sem_destroy(s_elf);
+
+    return 0;
 }
 
 void* prep_memory(size_t mem_size) {
