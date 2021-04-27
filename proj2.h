@@ -143,7 +143,11 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[]);
 
 /*
  * @brief Proces santa
+ * @param elfID id elfa
+ * @param args argumenty
+ * @param shem ukazatel do sdílené paměti
+ * @param sems semafory
  */
-void santa();
+void santa(args_t *args, void *shem, sem_t *sems[]);
 
 #endif //IOS_PROJ2_PROJ2_H

@@ -50,7 +50,7 @@ int run_proj(args_t *args)
             case 0:
                 // První proces je Santa
                 if (i == 0) {
-                    santa();
+                    santa(args, shem, sems);
                     return 0;
                 }
                 // Pokud je ještě třeba, tak se přidá elf
@@ -88,12 +88,32 @@ int run_proj(args_t *args)
     return 0;
 }
 
-void santa()
+/*
+ * 1.Po spuštění vypíše:  A: Santa: going to sleep
+ * 2.Po probuzení skřítky jde pomáhat elfům---vypíše: A: Santa: helping elves
+ * 3.Poté, co pomůže skřítkům jde spát (bez ohledu na to, jestli před dílnou čekají další skřítci) avypíše: A: Santa: going to sleep
+ * 4.Po probuzení posledním sobem uzavře dílnu a vypíše: A: Santa: closing workshop a pak jde ihned zapřahat soby do saní.
+ * 5.Ve chvíli, kdy jsou zapřažení všichni soby vypíše: A: Santa: Christmas starteda ihned proces končí
+*/
+void santa(args_t *args, void *shem, sem_t *sems[])
 {
     // TODO
-    printf("Santa is here baby\n");
 
+    PRIN_FLUSHT(stdout, "%d: Santa: going to sleep\n", ++(((personnel_t *)shem)->action_counter));
+    LOC_SEM(SANTA);
+
+    if(((personnel_t *)shem)->reindeers_back == 9)
+    {
+        PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(((personnel_t *)shem)->action_counter));
+
+    }
+    else if(((personnel_t *)shem)->elves_in_line == 3)
+    {
+        PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(((personnel_t *)shem)->action_counter));
+    }
 }
+
+// TODO write to file instead of stdout
 
 /*
  * 1.Každý skřítek je unikátně identifikován číslem elfID. 0<elfID<=NE
@@ -108,7 +128,6 @@ void santa()
  *      tak při odchodu z dílny může upozornit čekající skřítky, že už je volno (volitelné).
  * 8.Pokud je na dveřích dílny nápis „Vánoce – zavřeno“ vypíše: A: Elf elfID: taking holidays a proces ihned skončí
  */
-
 void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
 {
     // TODO
@@ -140,7 +159,6 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
  *   Pokud je posledním sobem, který se vrátil z dovolené, tak vzbudí Santu.
  * 5.Po zapřažení do saní vypíše: A: RD rdID: get hitched a následně proces končí
 */
-// TODO write to file instead of stdout
 void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
 {
     // TODO resolve MUTEX
