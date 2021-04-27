@@ -8,29 +8,12 @@
 
 int main(int argc, char **argv) {
     args_t args;
+    void *shem = NULL;
+    sem_t *sems[N_SEMAPHORES];
 
     // Načtení vstupních parametrů
     if(setup(argc, argv, &args) == 1)
         exit(1);
-
-    run_proj(&args);
-
-    fclose(args.file);
-
-    return 0;
-}
-
-int run_proj(args_t *args)
-{
-    void *shem = NULL;
-    sem_t *sems[N_SEMAPHORES];
-    personnel_t personnel;
-    personnel.active_elves = 0;
-    personnel.active_reindeers = 0;
-    personnel.reindeers_back = 0;
-    personnel.elves_in_line = 0;
-    personnel.christmas_closed = false;
-    personnel.workshop_empty = true;
 
     if ((shem = prep_memory(sizeof(personnel_t))) == MAP_FAILED) {
         PRINTERR("Sdílenou paměť se nezdažilo namapovat\n");
@@ -41,6 +24,27 @@ int run_proj(args_t *args)
         PRINTERR("Semafory se nezdažilo namapovat\n");
         return 1;
     }
+
+    run_proj(&args, shem, sems);
+
+    close_mem(sizeof(personnel_t), shem);
+    close_sems(sems, N_SEMAPHORES);
+    fclose(args.file);
+
+    return 0;
+}
+
+int run_proj(args_t *args, void *shem, sem_t *sems[])
+{
+    personnel_t personnel;
+    personnel.active_elves = 0;
+    personnel.active_reindeers = 0;
+    personnel.reindeers_back = 0;
+    personnel.elves_in_line = 0;
+    personnel.christmas_closed = false;
+    personnel.workshop_empty = true;
+
+    //LOC_SEM(MUTEX);
 
     for(int i = 0; (args->NE + args->NR) >= i; ++i)
     {
@@ -55,9 +59,9 @@ int run_proj(args_t *args)
                 // Pokud je ještě třeba, tak se přidá elf
                 if (((personnel_t*)shem)->active_elves < args->NE) {
                     if (personnel.active_elves < args->NE) {
-                        // LOC_SEM(MUTEX);
+                        LOC_SEM(MUTEX);
                         ((personnel_t*)shem)->active_elves++;
-                        // UNLOC_SEM(MUTEX);
+                        UNLOC_SEM(MUTEX);
                         elf(((personnel_t*)shem)->active_elves, args, shem, sems);
                     }
                     return 0;
@@ -66,9 +70,9 @@ int run_proj(args_t *args)
                 if (((personnel_t*)shem)->active_reindeers < args->NR) {
                     if (personnel.active_reindeers < args->NR)
                     {
-                        // LOC_SEM(MUTEX);
+                        LOC_SEM(MUTEX);
                         ((personnel_t*)shem)->active_reindeers++;
-                        // UNLOC_SEM(MUTEX);
+                        UNLOC_SEM(MUTEX);
                         deer(((personnel_t*)shem)->active_reindeers, args, shem, sems);
                     }
                     return 0;
@@ -81,9 +85,6 @@ int run_proj(args_t *args)
                 break;
         }
     }
-
-    close_mem(sizeof(personnel_t), shem);
-    close_sems(sems, N_SEMAPHORES);
 
     return 0;
 }
@@ -102,17 +103,23 @@ void santa(args_t *args, void *shem, sem_t *sems[])
     PRIN_FLUSHT(stdout, "%d: Santa: going to sleep\n", ++(((personnel_t *)shem)->action_counter));
     LOC_SEM(SANTA);
 
-    if(((personnel_t *)shem)->reindeers_back == 9)
+    while (true)
     {
-        PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(((personnel_t *)shem)->action_counter));
-        UNLOC_SEM(REINDEER);
-        ((personnel_t *)shem)->workshop_empty = true;
-        ((personnel_t *)shem)->christmas_closed = true;
-    }
-    else if(((personnel_t *)shem)->elves_in_line == 3)
-    {
-        PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(((personnel_t *)shem)->action_counter));
-        UNLOC_SEM(ELF);
+        if(((personnel_t *)shem)->reindeers_back == args->NR)
+        {
+            PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(((personnel_t *)shem)->action_counter));
+            UNLOC_SEM(REINDEER);
+            ((personnel_t *)shem)->workshop_empty = true;
+            ((personnel_t *)shem)->christmas_closed = true;
+            break;
+        }
+        else if(((personnel_t *)shem)->elves_in_line == 3)
+        {
+            PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(((personnel_t *)shem)->action_counter));
+            for (int i = 0; i < 3; ++i)
+                UNLOC_SEM(ELF);
+            LOC_SEM(SANTA);
+        }
     }
 }
 
@@ -140,21 +147,25 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[])
     // Skřítek pracuje
     usleep(get_rand(0, args->TE));
 
+    LOC_SEM(ELF);
     PRIN_FLUSHT(stdout, "%d: Elf %d: need help\n", ++(((personnel_t *)shem)->action_counter), elfID);
+    if (((personnel_t *)shem)->christmas_closed)
+    {
+        PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(((personnel_t *)shem)->action_counter), elfID);
+        return;
+    }
+
     ((personnel_t *)shem)->elves_in_line++;
     if (((personnel_t *)shem)->workshop_empty &&
         !((personnel_t *)shem)->christmas_closed &&
         ((personnel_t *)shem)->elves_in_line == 3)
     {
         UNLOC_SEM(SANTA);
-        LOC_SEM(ELF);
         PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(((personnel_t *)shem)->action_counter), elfID);
     }
 
     if (((personnel_t *)shem)->christmas_closed)
         PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(((personnel_t *)shem)->action_counter), elfID);
-
-    exit(1);
 }
 
 /*

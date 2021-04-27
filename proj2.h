@@ -119,9 +119,11 @@ int open_file(args_t *args);
 /*
  * @brief Spustí projekt
  * @param args vstupní argumenty
+ * @param shem odkaz na sdílenou paměť
+ * @param sems semafory
  * @retun po úspěšném otevření vrací 0 jinak 1
  */
-int run_proj(args_t *args);
+int run_proj(args_t *args, void *shem, sem_t *sems[]);
 
 /*
  * @brief Vrátí náhodné číslo menší než strop
