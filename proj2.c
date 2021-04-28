@@ -36,15 +36,10 @@ int main(int argc, char **argv) {
 
 int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
 {
-    personnel->active_elves = 0;
-    personnel->active_reindeers = 0;
-    personnel->reindeers_back = 0;
-    personnel->elves_in_line = 0;
-    personnel->hitched_reindeers = 0;
-    personnel->elves_on_vacation = 0;
-    personnel->christmas_closed = false;
-    personnel->workshop_empty = true;
-
+    personnel_t init = {0, 0, 0,
+                        0, 0, 0,
+                        0, false, true};
+    *personnel = init;
     int elf_id = 0;
     int deer_id = 0;
 
