@@ -96,19 +96,10 @@ int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
 */
 void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
 {
-    // TODO
-
     PRIN_FLUSHT(stdout, "%d: Santa: going to sleep\n", ++(personnel->action_counter));
 
     while (true)
     {
-        /*
-        LOC_SEM(MUTEX);
-        printf("in line %d\n", personnel->elves_in_line);
-        printf("deers back %d\n", personnel->reindeers_back);
-        printf("deers %d\n", args->NR);
-        fflush(NULL);
-        UNLOC_SEM(MUTEX);*/
         LOC_SEM(SANTA);
         LOC_SEM(MUTEX);
         if(personnel->reindeers_back == args->NR)
@@ -119,6 +110,7 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
             personnel->workshop_empty = true;
             personnel->christmas_closed = true;
             UNLOC_SEM(MUTEX);
+            LOC_SEM(ALL_HITHCED);
             PRIN_FLUSHT(stdout, "%d: Santa: Christmas started\n", ++(personnel->action_counter));
             UNLOC_SEM(END);
             exit(0);
@@ -160,7 +152,7 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
     while (true)
     {
         // Skřítek pracuje
-        usleep(get_rand(0, args->TE) * 1000);
+        SLEEP_MILS(0, args->TE);
 
         LOC_SEM(MUTEX);
         PRIN_FLUSHT(stdout, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
@@ -174,8 +166,8 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
         LOC_SEM(MUTEX);
         personnel->elves_in_line++;
         if (personnel->workshop_empty == true &&
-            /*((personnel_t *)shem)->christmas_closed == false &&*/
-                personnel->elves_in_line == 3) {
+            personnel->christmas_closed == false &&
+            personnel->elves_in_line == 3) {
             UNLOC_SEM(MUTEX);
             UNLOC_SEM(SANTA);
         } else
@@ -185,8 +177,6 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
         LOC_SEM(MUTEX);
         PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(personnel->action_counter), elfID);
         UNLOC_SEM(MUTEX);
-
-
 
         if (personnel->christmas_closed)
         {
@@ -208,15 +198,13 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
 */
 void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
 {
-    // TODO resolve MUTEX
-
     // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
     LOC_SEM(MUTEX);
     PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(personnel->action_counter), rdID)
     UNLOC_SEM(MUTEX);
 
     // Dovolená
-    usleep(get_rand(args->TR/2, args->TR) * 1000);
+    SLEEP_MILS(args->TR/2, args->TR);
 
     // Sob se vrátí z dovolené
     LOC_SEM(MUTEX);
@@ -231,7 +219,12 @@ void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
         UNLOC_SEM(MUTEX);
 
     LOC_SEM(REINDEER);
+    LOC_SEM(MUTEX);
     PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(personnel->action_counter), rdID);
+    personnel->hitched_reindeers++;
+    if (personnel->hitched_reindeers == personnel->active_reindeers)
+        UNLOC_SEM(ALL_HITHCED);
+    UNLOC_SEM(MUTEX);
 
     exit(0);
 }
@@ -330,7 +323,6 @@ int load_args(char **argv, args_t *args)
             }
         }
     }
-
     return 0;
 }
 
@@ -370,5 +362,5 @@ int setup(int argc, char **argv, args_t *args)
 int get_rand(int floor, int roof)
 {
     srand(time(NULL));
-    return (rand() % (roof - floor + 1)) + floor;
+    return ((rand() % (roof - floor)) + floor);
 }

@@ -23,8 +23,10 @@
 #include <time.h>
 #include <stdbool.h>
 
-#define N_SEMAPHORES 5
+// Počet semaforů
+#define N_SEMAPHORES 6
 
+// Vypiš chybu
 #define PRINTERR(E) fprintf(stderr, E)
 
 #define PRIN_FLUSHT(F, ...) {     \
@@ -46,10 +48,10 @@
 // Makro pro odemknutí semaforu
 #define UNLOC_SEM(X) sem_post(sems[X])
 
-#define PERSONNEL ((personnel_t *)shem)
+#define SLEEP_MILS(F,R) (get_rand(F, R) * 1000)
 
-// Seznam semaforůactive_elves
-enum semaphores_e{SANTA, ELF, REINDEER, MUTEX, END};
+// Seznam semaforů
+enum semaphores_e{SANTA, ELF, REINDEER, MUTEX, END, ALL_HITHCED};
 
 // Strukt s argumenty a soubory
 typedef struct args
