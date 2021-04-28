@@ -20,7 +20,7 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <sys/mman.h>
-#include<time.h>
+#include <time.h>
 #include <stdbool.h>
 
 #define N_SEMAPHORES 5
@@ -32,14 +32,24 @@
         fflush(NULL);             \
 }
 
+#define TEST {\
+    printf("ELF %d\n", *((int **)sems)[ELF]); \
+    printf("SANTA %d\n", *((int **)sems)[SANTA]); \
+    printf("REINDEER %d\n", *((int **)sems)[REINDEER]); \
+    printf("MUTEX %d\n", *((int **)sems)[MUTEX]); \
+    fflush(NULL);                \
+}
+
 // Makro pro zamknutí semaforu
 #define LOC_SEM(X) sem_wait(sems[X])
 
 // Makro pro odemknutí semaforu
 #define UNLOC_SEM(X) sem_post(sems[X])
 
+#define PERSONNEL ((personnel_t *)shem)
+
 // Seznam semaforůactive_elves
-enum semaphores_e{SANTA=0, ELF, REINDEER, MUTEX, HITCH};
+enum semaphores_e{SANTA, ELF, REINDEER, MUTEX, END};
 
 // Strukt s argumenty a soubory
 typedef struct args
@@ -99,7 +109,7 @@ void close_mem(size_t size, void *pointer);
  * @param Nsems počet semaforů
  * @return po úspěšném namapování vrací 0 jinak 1
  */
-int prep_sems(sem_t *semaphs[], int Nsems);
+int prep_sems(sem_t *semaphs[]);
 
 /*
  * @brief Vymaže semafory z paměti

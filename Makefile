@@ -7,7 +7,7 @@
 
 CFLAGS  	= -g -std=gnu99 -Wextra -Wall -pedantic -O2 -march=native -flto
 DEBUGFLAGS	= -Og -g -rdynamic -std=gnu99 -Wextra -Wall -pedantic
-ADDITIONAL	= -lpthread -lrt
+ADDITIONAL	= -lpthread -lrt -pthread
 CC 			= gcc
 
 .PHONY: clean
