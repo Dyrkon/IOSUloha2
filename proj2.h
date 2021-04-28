@@ -68,6 +68,7 @@ typedef struct personnel
     int active_elves;
     int active_reindeers;
     int reindeers_back;
+    int hitched_reindeers;
     int elves_in_line;
     bool christmas_closed;
     bool workshop_empty;
@@ -133,7 +134,7 @@ int open_file(args_t *args);
  * @param sems semafory
  * @retun po úspěšném otevření vrací 0 jinak 1
  */
-int run_proj(args_t *args, void *shem, sem_t *sems[]);
+int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[]);
 
 /*
  * @brief Vrátí náhodné číslo menší než strop
@@ -150,7 +151,7 @@ int get_rand(int floor, int roof);
  * @param shem ukazatel do sdílené paměti
  * @param sems semafory
  */
-void deer(int rdID, args_t *args, void *shem, sem_t *sems[]);
+void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[]);
 
 /*
  * @brief Proces elf
@@ -159,7 +160,7 @@ void deer(int rdID, args_t *args, void *shem, sem_t *sems[]);
  * @param shem ukazatel do sdílené paměti
  * @param sems semafory
  */
-void elf(int elfID, args_t *args, void *shem, sem_t *sems[]);
+void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]);
 
 /*
  * @brief Proces santa
@@ -168,6 +169,6 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[]);
  * @param shem ukazatel do sdílené paměti
  * @param sems semafory
  */
-void santa(args_t *args, void *shem, sem_t *sems[]);
+void santa(args_t *args, personnel_t *personnel, sem_t *sems[]);
 
 #endif //IOS_PROJ2_PROJ2_H

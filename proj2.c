@@ -34,44 +34,46 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-int run_proj(args_t *args, void *shem, sem_t *sems[])
+int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
 {
-    ((personnel_t *)shem)->active_elves = 0;
-    ((personnel_t *)shem)->active_reindeers = 0;
-    ((personnel_t *)shem)->reindeers_back = 0;
-    ((personnel_t *)shem)->elves_in_line = 0;
-    ((personnel_t *)shem)->christmas_closed = false;
-    ((personnel_t *)shem)->workshop_empty = true;
+    personnel->active_elves = 0;
+    personnel->active_reindeers = 0;
+    personnel->reindeers_back = 0;
+    personnel->elves_in_line = 0;
+    personnel->hitched_reindeers = 0;
+    personnel->christmas_closed = false;
+    personnel->workshop_empty = true;
 
     int elf_id = 0;
     int deer_id = 0;
 
-    for(int i = 0; (args->NE + args->NR) >= i; ++i)
+    for(int i = 0; i < (args->NE + args->NR + 1); ++i)
     {
         switch (fork()) {
             // Dítě vytvořeno
             case 0:
                 // První proces je Santa
                 if (i == 0) {
-                    santa(args, shem, sems);
-                    return 0;
+                    santa(args, personnel, sems);
                 }
                 // Pokud je ještě třeba, tak se přidá elf
-                else if (((personnel_t*)shem)->active_elves < args->NE) {
-                    LOC_SEM(MUTEX);
-                    ((personnel_t*)shem)->active_elves++;
-                    elf_id = ((personnel_t*)shem)->active_elves;
+                LOC_SEM(MUTEX);
+                if (personnel->active_elves < args->NE) {
+                    personnel->active_elves++;
+                    elf_id = personnel->active_elves;
                     UNLOC_SEM(MUTEX);
-                    elf(elf_id, args, shem, sems);
+                    elf(elf_id, args, personnel, sems);
                 }
+                UNLOC_SEM(MUTEX);
                 // Pokud je ještě třeba, tak se přidá sob
-                else if (((personnel_t*)shem)->active_reindeers < args->NR) {
-                    LOC_SEM(MUTEX);
-                    ((personnel_t*)shem)->active_reindeers++;
-                    deer_id = ((personnel_t*)shem)->active_reindeers;
+                LOC_SEM(MUTEX);
+                if (personnel->active_reindeers < args->NR) {
+                    personnel->active_reindeers++;
+                    deer_id = personnel->active_reindeers;
                     UNLOC_SEM(MUTEX);
-                    deer(deer_id, args, shem, sems);
+                    deer(deer_id, args, personnel, sems);
                 }
+                UNLOC_SEM(MUTEX);
                 break;
             case -1:
                 PRINTERR("Naskytla se chyba pri forkovani procesu\n");
@@ -92,36 +94,44 @@ int run_proj(args_t *args, void *shem, sem_t *sems[])
  * 4.Po probuzení posledním sobem uzavře dílnu a vypíše: A: Santa: closing workshop a pak jde ihned zapřahat soby do saní.
  * 5.Ve chvíli, kdy jsou zapřažení všichni soby vypíše: A: Santa: Christmas starteda ihned proces končí
 */
-void santa(args_t *args, void *shem, sem_t *sems[])
+void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
 {
     // TODO
 
-    PRIN_FLUSHT(stdout, "%d: Santa: going to sleep\n", ++(((personnel_t *)shem)->action_counter));
+    PRIN_FLUSHT(stdout, "%d: Santa: going to sleep\n", ++(personnel->action_counter));
 
     while (true)
     {
-        //TEST
-        //LOC_SEM(SANTA);
-        //LOC_SEM(MUTEX);
-        if(((personnel_t *)shem)->reindeers_back == args->NR)
+        /*
+        LOC_SEM(MUTEX);
+        printf("in line %d\n", personnel->elves_in_line);
+        printf("deers back %d\n", personnel->reindeers_back);
+        printf("deers %d\n", args->NR);
+        fflush(NULL);
+        UNLOC_SEM(MUTEX);*/
+        LOC_SEM(SANTA);
+        LOC_SEM(MUTEX);
+        if(personnel->reindeers_back == args->NR)
         {
-            PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(((personnel_t *)shem)->action_counter));
-            for(int i = 0; i < ((personnel_t *)shem)->active_reindeers; ++i)
+            PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(personnel->action_counter));
+            for(int i = 0; i < personnel->active_reindeers; ++i)
                 UNLOC_SEM(REINDEER);
-            ((personnel_t *)shem)->workshop_empty = true;
-            ((personnel_t *)shem)->christmas_closed = true;
-            //UNLOC_SEM(MUTEX);
+            personnel->workshop_empty = true;
+            personnel->christmas_closed = true;
+            UNLOC_SEM(MUTEX);
+            PRIN_FLUSHT(stdout, "%d: Santa: Christmas started\n", ++(personnel->action_counter));
             UNLOC_SEM(END);
             exit(0);
         }
-        else if(((personnel_t *)shem)->elves_in_line == 3)
+        else if(personnel->elves_in_line == 3)
         {
-            PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(((personnel_t *)shem)->action_counter));
+            PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(personnel->action_counter));
             for (int i = 0; i < 3; ++i)
                 UNLOC_SEM(ELF);
-            ((personnel_t *)shem)->elves_in_line -= 3;
+            personnel->elves_in_line -= 3;
+            personnel->workshop_empty = true;
         }
-        //UNLOC_SEM(MUTEX);
+        UNLOC_SEM(MUTEX);
     }
 
 }
@@ -141,46 +151,47 @@ void santa(args_t *args, void *shem, sem_t *sems[])
  *      tak při odchodu z dílny může upozornit čekající skřítky, že už je volno (volitelné).
  * 8.Pokud je na dveřích dílny nápis „Vánoce – zavřeno“ vypíše: A: Elf elfID: taking holidays a proces ihned skončí
  */
-void elf(int elfID, args_t *args, void *shem, sem_t *sems[]) {
+void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
     // TODO
     LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: Elf %d: started\n", ++(((personnel_t *) shem)->action_counter), elfID);
+    PRIN_FLUSHT(stdout, "%d: Elf %d: started\n", ++(personnel->action_counter), elfID);
     UNLOC_SEM(MUTEX);
-
-    // Skřítek pracuje
-    usleep(get_rand(0, args->TE) * 1000);
-
-    LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: Elf %d: need help\n", ++(((personnel_t *) shem)->action_counter), elfID);
-    if (((personnel_t *) shem)->christmas_closed) {
-        PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(((personnel_t *) shem)->action_counter), elfID);
-        UNLOC_SEM(MUTEX);
-        exit(0);
-    }
-    UNLOC_SEM(MUTEX);
-
-    LOC_SEM(MUTEX);
-    ((personnel_t *) shem)->elves_in_line++;
-    if (/*((personnel_t *)shem)->workshop_empty == true &&*/
-        /*((personnel_t *)shem)->christmas_closed == false &&*/
-            ((personnel_t *) shem)->elves_in_line == 3) {
-        UNLOC_SEM(MUTEX);
-        UNLOC_SEM(SANTA);
-        TEST
-    } else
-        UNLOC_SEM(MUTEX);
 
     while (true)
     {
-        LOC_SEM(ELF);
+        // Skřítek pracuje
+        usleep(get_rand(0, args->TE) * 1000);
+
         LOC_SEM(MUTEX);
-        PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(((personnel_t *)shem)->action_counter), elfID);
+        PRIN_FLUSHT(stdout, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
+        if (personnel->christmas_closed) {
+            PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
+            UNLOC_SEM(MUTEX);
+            exit(0);
+        }
         UNLOC_SEM(MUTEX);
 
-        if (((personnel_t *)shem)->christmas_closed)
+        LOC_SEM(MUTEX);
+        personnel->elves_in_line++;
+        if (personnel->workshop_empty == true &&
+            /*((personnel_t *)shem)->christmas_closed == false &&*/
+                personnel->elves_in_line == 3) {
+            UNLOC_SEM(MUTEX);
+            UNLOC_SEM(SANTA);
+        } else
+            UNLOC_SEM(MUTEX);
+
+        LOC_SEM(ELF);
+        LOC_SEM(MUTEX);
+        PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(personnel->action_counter), elfID);
+        UNLOC_SEM(MUTEX);
+
+
+
+        if (personnel->christmas_closed)
         {
             LOC_SEM(MUTEX);
-            PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(((personnel_t *)shem)->action_counter), elfID);
+            PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
             UNLOC_SEM(MUTEX);
             exit(0);
         }
@@ -195,13 +206,13 @@ void elf(int elfID, args_t *args, void *shem, sem_t *sems[]) {
  *   Pokud je posledním sobem, který se vrátil z dovolené, tak vzbudí Santu.
  * 5.Po zapřažení do saní vypíše: A: RD rdID: get hitched a následně proces končí
 */
-void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
+void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
 {
     // TODO resolve MUTEX
 
     // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
     LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(((personnel_t *)shem)->action_counter), rdID)
+    PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(personnel->action_counter), rdID)
     UNLOC_SEM(MUTEX);
 
     // Dovolená
@@ -209,19 +220,18 @@ void deer(int rdID, args_t *args, void *shem, sem_t *sems[])
 
     // Sob se vrátí z dovolené
     LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: RD %d: return\n", ++(((personnel_t *)shem)->action_counter), rdID);
-    ((personnel_t *)args)->reindeers_back++;
-    if (((personnel_t *)shem)->reindeers_back == ((personnel_t *)shem)->active_reindeers)
+    PRIN_FLUSHT(stdout, "%d: RD %d: return\n", ++(personnel->action_counter), rdID);
+    personnel->reindeers_back++;
+    if (personnel->reindeers_back == personnel->active_reindeers)
     {
         UNLOC_SEM(MUTEX);
         UNLOC_SEM(SANTA);
-        TEST
     }
     else
         UNLOC_SEM(MUTEX);
 
     LOC_SEM(REINDEER);
-    PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(((personnel_t *)shem)->action_counter), rdID);
+    PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(personnel->action_counter), rdID);
 
     exit(0);
 }
@@ -242,7 +252,7 @@ int prep_sems(sem_t *semaphs[])
             }
             return 1;
         }
-        if((sem_init(semaphs[i], 0, (i == MUTEX ? 1 : 0))) == -1)
+        if((sem_init(semaphs[i], 1, (i == MUTEX ? 1 : 0))) == -1)
         {
             for(int j = 0; j < i; j++)
             {
