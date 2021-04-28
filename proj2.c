@@ -41,6 +41,7 @@ int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
     personnel->reindeers_back = 0;
     personnel->elves_in_line = 0;
     personnel->hitched_reindeers = 0;
+    personnel->elves_on_vacation = 0;
     personnel->christmas_closed = false;
     personnel->workshop_empty = true;
 
@@ -87,13 +88,6 @@ int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
     return 0;
 }
 
-/*
- * 1.Po spuštění vypíše:  A: Santa: going to sleep
- * 2.Po probuzení skřítky jde pomáhat elfům---vypíše: A: Santa: helping elves
- * 3.Poté, co pomůže skřítkům jde spát (bez ohledu na to, jestli před dílnou čekají další skřítci) avypíše: A: Santa: going to sleep
- * 4.Po probuzení posledním sobem uzavře dílnu a vypíše: A: Santa: closing workshop a pak jde ihned zapřahat soby do saní.
- * 5.Ve chvíli, kdy jsou zapřažení všichni soby vypíše: A: Santa: Christmas starteda ihned proces končí
-*/
 void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
 {
     PRIN_FLUSHT(stdout, "%d: Santa: going to sleep\n", ++(personnel->action_counter));
@@ -107,11 +101,14 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
             PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(personnel->action_counter));
             for(int i = 0; i < personnel->active_reindeers; ++i)
                 UNLOC_SEM(REINDEER);
-            personnel->workshop_empty = true;
+            for (int i = 0; i < 3; ++i)
+                UNLOC_SEM(ELF);
+            personnel->workshop_empty = false;
             personnel->christmas_closed = true;
             UNLOC_SEM(MUTEX);
             LOC_SEM(ALL_HITHCED);
             PRIN_FLUSHT(stdout, "%d: Santa: Christmas started\n", ++(personnel->action_counter));
+            LOC_SEM(ALL_DONE);
             UNLOC_SEM(END);
             exit(0);
         }
@@ -129,22 +126,7 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
 }
 
 // TODO write to file instead of stdout
-
-/*
- * 1.Každý skřítek je unikátně identifikován číslem elfID. 0<elfID<=NE
- * 2.Po spuštění vypíše: A: Elf elfID: started
- * 3.Samostatnou práci modelujte voláním funkce usleep na náhodný čas v intervalu <0,TE>.
- * 4.Když skončí samostatnou práci, potřebuje pomoc od Santy.
- *      Vypíše: A: Elf elfID: need help a zařadí se do fronty před Santovou dílnou.
- * 5.Pokud je třetí ve frontě před dílnou, dílna je prázdná a na dílně není cedule „Vánoce – zavřeno“,
- *      tak společně s prvním a druhým z fronty vstoupí do dílny a vzbudí Santu.
- * 6.Skřítek v dílně dostane pomoc a vypíše: A: Elf elfID: get help  (na pořadí pomoci skřítkům v dílně nezáleží)
- * 7.Po obdržení pomoci ihned odchází z dílny a pokud je dílna již volná,
- *      tak při odchodu z dílny může upozornit čekající skřítky, že už je volno (volitelné).
- * 8.Pokud je na dveřích dílny nápis „Vánoce – zavřeno“ vypíše: A: Elf elfID: taking holidays a proces ihned skončí
- */
 void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
-    // TODO
     LOC_SEM(MUTEX);
     PRIN_FLUSHT(stdout, "%d: Elf %d: started\n", ++(personnel->action_counter), elfID);
     UNLOC_SEM(MUTEX);
@@ -175,13 +157,17 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
 
         LOC_SEM(ELF);
         LOC_SEM(MUTEX);
-        PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(personnel->action_counter), elfID);
+        if (!personnel->christmas_closed)
+            PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(personnel->action_counter), elfID);
         UNLOC_SEM(MUTEX);
 
         if (personnel->christmas_closed)
         {
             LOC_SEM(MUTEX);
             PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
+            personnel->elves_on_vacation++;
+            if (personnel->elves_on_vacation == personnel->active_elves)
+                UNLOC_SEM(ALL_DONE);
             UNLOC_SEM(MUTEX);
             exit(0);
         }

@@ -24,7 +24,7 @@
 #include <stdbool.h>
 
 // Počet semaforů
-#define N_SEMAPHORES 6
+#define N_SEMAPHORES 7
 
 // Vypiš chybu
 #define PRINTERR(E) fprintf(stderr, E)
@@ -48,10 +48,10 @@
 // Makro pro odemknutí semaforu
 #define UNLOC_SEM(X) sem_post(sems[X])
 
-#define SLEEP_MILS(F,R) (get_rand(F, R) * 1000)
+#define SLEEP_MILS(F,R) (usleep(get_rand(F, R) * 1000))
 
 // Seznam semaforů
-enum semaphores_e{SANTA, ELF, REINDEER, MUTEX, END, ALL_HITHCED};
+enum semaphores_e{SANTA, ELF, REINDEER, MUTEX, END, ALL_HITHCED, ALL_DONE};
 
 // Strukt s argumenty a soubory
 typedef struct args
@@ -71,6 +71,7 @@ typedef struct personnel
     int active_reindeers;
     int reindeers_back;
     int hitched_reindeers;
+    int elves_on_vacation;
     int elves_in_line;
     bool christmas_closed;
     bool workshop_empty;
