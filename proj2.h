@@ -52,7 +52,7 @@
 // Makro pro odemknutí semaforu
 #define UNLOC_SEM(X) sem_post(sems[X])
 
-#define SLEEP_MILS(F,R) (usleep(get_rand(F, R) * 1000))
+#define SLEEP_MILS(F,R) (R != 0 ? usleep(get_rand(F, R) * 1000) : 0)
 
 // Seznam semaforů
 enum semaphores_e{SANTA, ELF, REINDEER, MUTEX, END, ALL_HITHCED, ALL_DONE};

@@ -3,3 +3,6 @@
 *.pdf
 .idea/
 expl
+p2test.py
+killproj.sh
+/p2test

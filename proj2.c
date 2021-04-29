@@ -90,7 +90,7 @@ int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
 
 void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
 {
-    PRIN_FLUSHT(stdout, "%d: Santa: going to sleep\n", ++(personnel->action_counter));
+    PRIN_FLUSHT(args->file, "%d: Santa: going to sleep\n", ++(personnel->action_counter));
 
     while (true)
     {
@@ -98,7 +98,7 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
         LOC_SEM(MUTEX);
         if(personnel->reindeers_back == args->NR)
         {
-            PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(personnel->action_counter));
+            PRIN_FLUSHT(args->file, "%d: Santa: closing workshop\n", ++(personnel->action_counter));
             for(int i = 0; i < personnel->active_reindeers; ++i)
                 UNLOC_SEM(REINDEER);
             for (int i = 0; i < personnel->elves_in_line; ++i)
@@ -107,15 +107,15 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
             personnel->christmas_closed = true;
             UNLOC_SEM(MUTEX);
             LOC_SEM(ALL_HITHCED);
-            PRIN_FLUSHT(stdout, "%d: Santa: Christmas started\n", ++(personnel->action_counter));
+            PRIN_FLUSHT(args->file, "%d: Santa: Christmas started\n", ++(personnel->action_counter));
             LOC_SEM(ALL_DONE);
             UNLOC_SEM(END);
             break;
-            //exit(0);
         }
         else if(personnel->elves_in_line == 3)
         {
-            PRIN_FLUSHT(stdout, "%d: Santa: helping elves\n", ++(personnel->action_counter));
+            PRIN_FLUSHT(args->file, "%d: Santa: helping elves\n", ++(personnel->action_counter));
+            PRIN_FLUSHT(args->file, "%d: Santa: going to sleep\n", ++(personnel->action_counter));
             for (int i = 0; i < 3; ++i)
                 UNLOC_SEM(ELF);
             personnel->elves_in_line -= 3;
@@ -123,13 +123,12 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
         }
         UNLOC_SEM(MUTEX);
     }
-    // exit(0);
 }
 
 // TODO write to file instead of stdout
 void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
     LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: Elf %d: started\n", ++(personnel->action_counter), elfID);
+    PRIN_FLUSHT(args->file, "%d: Elf %d: started\n", ++(personnel->action_counter), elfID);
     UNLOC_SEM(MUTEX);
 
     while (true)
@@ -138,9 +137,9 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
         SLEEP_MILS(0, args->TE);
 
         LOC_SEM(MUTEX);
-        PRIN_FLUSHT(stdout, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
+        PRIN_FLUSHT(args->file, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
         if (personnel->christmas_closed) {
-            PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
+            PRIN_FLUSHT(args->file, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
             personnel->elves_on_vacation++;
             if (personnel->elves_on_vacation == personnel->active_elves)
                 UNLOC_SEM(ALL_DONE);
@@ -162,13 +161,13 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
         LOC_SEM(ELF);
         LOC_SEM(MUTEX);
         if (!personnel->christmas_closed)
-            PRIN_FLUSHT(stdout, "%d: Elf %d: get help\n", ++(personnel->action_counter), elfID);
+            PRIN_FLUSHT(args->file, "%d: Elf %d: get help\n", ++(personnel->action_counter), elfID);
         UNLOC_SEM(MUTEX);
 
         if (personnel->christmas_closed)
         {
             LOC_SEM(MUTEX);
-            PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
+            PRIN_FLUSHT(args->file, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
             personnel->elves_on_vacation++;
             if (personnel->elves_on_vacation == personnel->active_elves)
                 UNLOC_SEM(ALL_DONE);
@@ -176,14 +175,13 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
             break;
         }
     }
-    // exit(0);
 }
 
 void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
 {
     // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
     LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: RD %d: rstarted\n", ++(personnel->action_counter), rdID)
+    PRIN_FLUSHT(args->file, "%d: RD %d: rstarted\n", ++(personnel->action_counter), rdID)
     UNLOC_SEM(MUTEX);
 
     // Dovolená
@@ -191,7 +189,7 @@ void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
 
     // Sob se vrátí z dovolené
     LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: RD %d: return\n", ++(personnel->action_counter), rdID);
+    PRIN_FLUSHT(args->file, "%d: RD %d: return home\n", ++(personnel->action_counter), rdID);
     personnel->reindeers_back++;
     if (personnel->reindeers_back == personnel->active_reindeers)
     {
@@ -203,13 +201,11 @@ void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
 
     LOC_SEM(REINDEER);
     LOC_SEM(MUTEX);
-    PRIN_FLUSHT(stdout, "%d: RD %d: get hitched\n", ++(personnel->action_counter), rdID);
+    PRIN_FLUSHT(args->file, "%d: RD %d: get hitched\n", ++(personnel->action_counter), rdID);
     personnel->hitched_reindeers++;
     if (personnel->hitched_reindeers == personnel->active_reindeers)
         UNLOC_SEM(ALL_HITHCED);
     UNLOC_SEM(MUTEX);
-
-    // exit(0);
 }
 
 int prep_sems(sem_t *semaphs[])
@@ -273,7 +269,7 @@ int load_args(char **argv, args_t *args)
     int temp = 0;
     for(int i = 1; argv[i]; ++i)
     {
-        if((temp = (int)strtol(argv[i], NULL, 10)) <= 0)
+        if((temp = (int)strtol(argv[i], NULL, 10)) < 0)
             return 1;
         else
         {
@@ -291,13 +287,13 @@ int load_args(char **argv, args_t *args)
                     break;
 
                 case 3:
-                    if(temp >= 1000)
+                    if(temp >= 1001)
                         return 1;
                     args->TE = temp;
                     break;
 
                 case 4:
-                    if(temp >= 1000)
+                    if(temp >= 1001)
                         return 1;
                     args->TR = temp;
                     break;
@@ -311,7 +307,7 @@ int load_args(char **argv, args_t *args)
 
 int open_file(args_t *args)
 {
-    if((args->file = fopen("proj2.txt","w")) == NULL)
+    if((args->file = fopen("proj2.obj","w")) == NULL)
     {
         PRINTERR("Soubor pro vypis se nepodarilo otevrit\n");
         return 1;
