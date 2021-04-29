@@ -41,7 +41,7 @@
     printf("REINDEER %d\n", *((int **)sems)[REINDEER]); \
     printf("MUTEX %d\n", *((int **)sems)[MUTEX]); \
     printf("ALL_DONE %d\n", *((int **)sems)[ELVES_OUT]); \
-    printf("END %d\n", *((int **)sems)[END]); \
+    printf("ELF_TEX %d\n", *((int **)sems)[ELF_TEX]); \
     printf("ALL_HITHCED %d\n\n", *((int **)sems)[ALL_HITHCED]); \
     fflush(NULL);                 \
 }
@@ -55,7 +55,7 @@
 #define SLEEP_MILS(F,R) (R != 0 ? usleep(get_rand(F, R) * 1000) : 0)
 
 // Seznam semaforů
-enum semaphores_e{SANTA, ELF, REINDEER, MUTEX, END, ALL_HITHCED, ELVES_OUT};
+enum semaphores_e{SANTA, ELF, REINDEER, MUTEX, ALL_HITHCED, ELVES_OUT, ELF_TEX};
 
 // Strukt s argumenty a soubory
 typedef struct args
