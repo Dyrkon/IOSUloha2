@@ -17,12 +17,12 @@ int main(int argc, char **argv) {
 
     if ((shem = prep_memory(sizeof(personnel_t))) == MAP_FAILED) {
         PRINTERR("Sdílenou paměť se nezdažilo namapovat\n");
-        return 1;
+        exit(1);
     }
 
     if (prep_sems(sems)){
         PRINTERR("Semafory se nezdažilo namapovat\n");
-        return 1;
+        exit(1);
     }
 
     run_proj(&args, shem, sems);
@@ -51,23 +51,28 @@ int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
                 // První proces je Santa
                 if (i == 0) {
                     santa(args, personnel, sems);
+                    return 0;
                 }
-                // Pokud je ještě třeba, tak se přidá elf
+
                 LOC_SEM(MUTEX);
+                // Pokud je ještě třeba, tak se přidá elf
                 if (personnel->active_elves < args->NE) {
                     personnel->active_elves++;
                     elf_id = personnel->active_elves;
                     UNLOC_SEM(MUTEX);
                     elf(elf_id, args, personnel, sems);
+                    return 0;
                 }
                 UNLOC_SEM(MUTEX);
-                // Pokud je ještě třeba, tak se přidá sob
+
                 LOC_SEM(MUTEX);
+                // Pokud je ještě třeba, tak se přidá sob
                 if (personnel->active_reindeers < args->NR) {
                     personnel->active_reindeers++;
                     deer_id = personnel->active_reindeers;
                     UNLOC_SEM(MUTEX);
                     deer(deer_id, args, personnel, sems);
+                    return 0;
                 }
                 UNLOC_SEM(MUTEX);
                 break;
@@ -105,7 +110,8 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
             PRIN_FLUSHT(stdout, "%d: Santa: Christmas started\n", ++(personnel->action_counter));
             LOC_SEM(ALL_DONE);
             UNLOC_SEM(END);
-            exit(0);
+            break;
+            //exit(0);
         }
         else if(personnel->elves_in_line == 3)
         {
@@ -117,7 +123,7 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
         }
         UNLOC_SEM(MUTEX);
     }
-
+    // exit(0);
 }
 
 // TODO write to file instead of stdout
@@ -167,19 +173,12 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
             if (personnel->elves_on_vacation == personnel->active_elves)
                 UNLOC_SEM(ALL_DONE);
             UNLOC_SEM(MUTEX);
-            exit(0);
+            break;
         }
     }
+    // exit(0);
 }
 
-/*
- * 1.Každý sob je identifikován číslem rdID, 0<rdID<=NR
- * 2.Po spuštění vypíše: A: RD rdID: rstarted
- * 3.Čas na dovolené modelujte voláním usleep na náhodný interval <TR/2,TR>
- * 4.Po návratu z letní dovolené vypíše: A: RD rdID: return home a následně čeká, než ho Santa zapřáhne k saním.
- *   Pokud je posledním sobem, který se vrátil z dovolené, tak vzbudí Santu.
- * 5.Po zapřažení do saní vypíše: A: RD rdID: get hitched a následně proces končí
-*/
 void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
 {
     // Zamknu si semafor se zápisem, pošlu soba na dovolenou, zápis odemknu
@@ -210,7 +209,7 @@ void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
         UNLOC_SEM(ALL_HITHCED);
     UNLOC_SEM(MUTEX);
 
-    exit(0);
+    // exit(0);
 }
 
 int prep_sems(sem_t *semaphs[])

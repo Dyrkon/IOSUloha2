@@ -29,6 +29,7 @@
 // Vypiš chybu
 #define PRINTERR(E) fprintf(stderr, E)
 
+// Vypíše do souboru
 #define PRIN_FLUSHT(F, ...) {     \
         fprintf(F, __VA_ARGS__);  \
         fflush(NULL);             \
