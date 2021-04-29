@@ -39,7 +39,10 @@
     printf("SANTA %d\n", *((int **)sems)[SANTA]); \
     printf("REINDEER %d\n", *((int **)sems)[REINDEER]); \
     printf("MUTEX %d\n", *((int **)sems)[MUTEX]); \
-    fflush(NULL);                \
+    printf("ALL_DONE %d\n", *((int **)sems)[ALL_DONE]); \
+    printf("END %d\n", *((int **)sems)[END]); \
+    printf("ALL_HITHCED %d\n", *((int **)sems)[ALL_HITHCED]); \
+    fflush(NULL);                 \
 }
 
 // Makro pro zamknutí semaforu

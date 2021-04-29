@@ -96,7 +96,7 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
             PRIN_FLUSHT(stdout, "%d: Santa: closing workshop\n", ++(personnel->action_counter));
             for(int i = 0; i < personnel->active_reindeers; ++i)
                 UNLOC_SEM(REINDEER);
-            for (int i = 0; i < 3; ++i)
+            for (int i = 0; i < personnel->elves_in_line; ++i)
                 UNLOC_SEM(ELF);
             personnel->workshop_empty = false;
             personnel->christmas_closed = true;
@@ -135,6 +135,9 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
         PRIN_FLUSHT(stdout, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
         if (personnel->christmas_closed) {
             PRIN_FLUSHT(stdout, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
+            personnel->elves_on_vacation++;
+            if (personnel->elves_on_vacation == personnel->active_elves)
+                UNLOC_SEM(ALL_DONE);
             UNLOC_SEM(MUTEX);
             exit(0);
         }
