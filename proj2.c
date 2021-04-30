@@ -48,7 +48,8 @@ int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
         switch (fork()) {
             // Dítě vytvořeno
             case 0:
-                // První proces je Santa
+                // První proces j -c Santa
+                 
                 if (i == 0) {
                     santa(args, personnel, sems);
                     return 0;
@@ -94,7 +95,9 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
 {
     while (true)
     {
+        LOC_SEM(MUTEX);
         PRIN_FLUSHT(args->file, "%d: Santa: going to sleep\n", ++(personnel->action_counter));
+        UNLOC_SEM(MUTEX);
 
         LOC_SEM(SANTA);
         LOC_SEM(MUTEX);
@@ -298,7 +301,7 @@ int load_args(char **argv, args_t *args)
 
 int open_file(args_t *args)
 {
-    if((args->file = fopen("proj2.obj","w")) == NULL)
+    if((args->file = fopen("proj2.out","w")) == NULL)
     {
         PRINTERR("Soubor pro vypis se nepodarilo otevrit\n");
         return 1;
