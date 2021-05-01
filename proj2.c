@@ -139,8 +139,11 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
         LOC_SEM(ELF_TEX);
         SLEEP_MILS(0, args->TE);
         LOC_SEM(MUTEX);
-            PRIN_FLUSHT(args->file, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
-            personnel->elves_in_line++;
+            if (!personnel->christmas_closed)
+            {
+                PRIN_FLUSHT(args->file, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
+                personnel->elves_in_line++;
+            }
             if (personnel->elves_in_line == 3 && personnel->workshop_empty && !personnel->christmas_closed)
             {
                 UNLOC_SEM(SANTA);
