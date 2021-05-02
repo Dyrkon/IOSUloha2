@@ -6,6 +6,8 @@
 
 #include "proj2.h"
 
+// ALOST WORKING
+
 int main(int argc, char **argv) {
     args_t args;
     void *shem = NULL;
@@ -49,7 +51,7 @@ int run_proj(args_t *args, personnel_t *personnel, sem_t *sems[])
             // Dítě vytvořeno
             case 0:
                 // První proces j -c Santa
-                 
+
                 if (i == 0) {
                     santa(args, personnel, sems);
                     return 0;
@@ -101,29 +103,32 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
 
         LOC_SEM(SANTA);
         LOC_SEM(MUTEX);
-            if (personnel->reindeers_back == args->NR)
+        if (personnel->reindeers_back == args->NR)
+        {
+            PRIN_FLUSHT(args->file, "%d: Santa: closing workshop\n", ++(personnel->action_counter));
+            for (int i = 0; i < personnel->reindeers_back; ++i)
+                UNLOC_SEM(REINDEER);
+            UNLOC_SEM(MUTEX);
+            LOC_SEM(ALL_HITHCED);
+            LOC_SEM(MUTEX);
+            personnel->christmas_closed = true;
+            for (int i = 0; i < personnel->elves_in_line; ++i)
+                UNLOC_SEM(ELF);
+            PRIN_FLUSHT(args->file, "%d: Santa: Christmas started\n", ++(personnel->action_counter));
+            UNLOC_SEM(MUTEX);
+            break;
+        }
+        else if (personnel->elves_in_line == 3)
+        {
+            PRIN_FLUSHT(args->file, "%d: Santa: helping elves\n", ++(personnel->action_counter));
+            for (int i = 0; i < 3; ++i)
             {
-                PRIN_FLUSHT(args->file, "%d: Santa: closing workshop\n", ++(personnel->action_counter));
-                personnel->workshop_empty = true;
-                for (int i = 0; i < personnel->reindeers_back; ++i)
-                    UNLOC_SEM(REINDEER);
-                personnel->christmas_closed = true;
-                for (int i = 0; i < personnel->elves_in_line; ++i)
-                    UNLOC_SEM(ELF);
-                UNLOC_SEM(MUTEX);
-                LOC_SEM(ALL_HITHCED);
-                PRIN_FLUSHT(args->file, "%d: Santa: Christmas started\n", ++(personnel->action_counter));
-                break;
+                UNLOC_SEM(ELF);
             }
-            else if (personnel->elves_in_line == 3)
-            {
-                PRIN_FLUSHT(args->file, "%d: Santa: helping elves\n", ++(personnel->action_counter));
-                for (int i = 0; i < 3; ++i)
-                    UNLOC_SEM(ELF);
-                personnel->workshop_empty = true;
-                UNLOC_SEM(MUTEX);
-                LOC_SEM(ELVES_OUT);
-            }
+            //personnel->workshop_empty = true;
+            UNLOC_SEM(MUTEX);
+            LOC_SEM(ELVES_OUT);
+        }
     }
 
 }
@@ -131,7 +136,7 @@ void santa(args_t *args, personnel_t *personnel, sem_t *sems[])
 // TODO write to file instead of stdout
 void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
     LOC_SEM(MUTEX);
-        PRIN_FLUSHT(args->file, "%d: Elf %d: started\n", ++(personnel->action_counter), elfID);
+    PRIN_FLUSHT(args->file, "%d: Elf %d: started\n", ++(personnel->action_counter), elfID);
     UNLOC_SEM(MUTEX);
 
     while (true)
@@ -139,69 +144,88 @@ void elf(int elfID, args_t *args, personnel_t *personnel, sem_t *sems[]) {
         LOC_SEM(ELF_TEX);
         SLEEP_MILS(0, args->TE);
         LOC_SEM(MUTEX);
-            if (!personnel->christmas_closed)
-            {
-                PRIN_FLUSHT(args->file, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
-                personnel->elves_in_line++;
-            }
-            if (personnel->elves_in_line == 3 && personnel->workshop_empty && !personnel->christmas_closed)
-            {
-                UNLOC_SEM(SANTA);
-                personnel->workshop_empty = false;
-            }
-            else if (personnel->christmas_closed)
-            {
-                PRIN_FLUSHT(args->file, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
-                personnel->elves_in_line--;
-                UNLOC_SEM(ELF_TEX);
-                UNLOC_SEM(MUTEX);
-                break;
-            }
-            else
-                UNLOC_SEM(ELF_TEX);
-            UNLOC_SEM(MUTEX);
-            LOC_SEM(ELF);
-            LOC_SEM(MUTEX);
-             if (!personnel->christmas_closed)
-                 PRIN_FLUSHT(args->file, "%d: Elf %d: get help\n", ++(personnel->action_counter), elfID);
+        PRIN_FLUSHT(args->file, "%d: Elf %d: need help\n", ++(personnel->action_counter), elfID);
+        personnel->elves_in_line++;
+        if (personnel->elves_in_line == 3 /*&& personnel->workshop_empty*/ && !personnel->christmas_closed)
+        {
+            UNLOC_SEM(SANTA);
+        }
+        else if (personnel->christmas_closed)
+        {
+            PRIN_FLUSHT(args->file, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
             personnel->elves_in_line--;
+            UNLOC_SEM(ELF_TEX);
+            UNLOC_SEM(MUTEX);
             if (personnel->elves_in_line == 0)
             {
                 UNLOC_SEM(ELVES_OUT);
                 UNLOC_SEM(ELF_TEX);
             }
+            break;
+        }
+        else
+            UNLOC_SEM(ELF_TEX);
         UNLOC_SEM(MUTEX);
-    }
 
+        LOC_SEM(ELF);
+        LOC_SEM(MUTEX);
+        if (!personnel->christmas_closed)
+        {
+            PRIN_FLUSHT(args->file, "%d: Elf %d: get help\n", ++(personnel->action_counter), elfID);
+            personnel->elves_in_line--;
+
+            if (personnel->elves_in_line == 0)
+            {
+                UNLOC_SEM(ELVES_OUT);
+                UNLOC_SEM(ELF_TEX);
+            }
+            UNLOC_SEM(MUTEX);
+        }
+        else
+        {
+            PRIN_FLUSHT(args->file, "%d: Elf %d: taking holidays\n", ++(personnel->action_counter), elfID);
+            personnel->elves_in_line--;
+            UNLOC_SEM(ELF_TEX);
+            if (personnel->elves_in_line == 0)
+            {
+                UNLOC_SEM(ELVES_OUT);
+                UNLOC_SEM(ELF_TEX);
+            }
+            UNLOC_SEM(MUTEX);
+            break;
+        }
+    }
 }
 
 void deer(int rdID, args_t *args, personnel_t *personnel, sem_t *sems[])
 {
     LOC_SEM(MUTEX);
-        PRIN_FLUSHT(args->file, "%d: RD %d: rstarted\n", ++(personnel->action_counter), rdID);
+    PRIN_FLUSHT(args->file, "%d: RD %d: rstarted\n", ++(personnel->action_counter), rdID);
     UNLOC_SEM(MUTEX);
 
     SLEEP_MILS(args->TR/2,args->TR);
 
     LOC_SEM(MUTEX);
-        PRIN_FLUSHT(args->file, "%d: RD %d: return home\n", ++(personnel->action_counter), rdID);
+    PRIN_FLUSHT(args->file, "%d: RD %d: return home\n", ++(personnel->action_counter), rdID);
     UNLOC_SEM(MUTEX);
 
     LOC_SEM(MUTEX);
-        personnel->reindeers_back++;
-        if (personnel->reindeers_back == args->NR)
-        {
-            UNLOC_SEM(MUTEX);
-            UNLOC_SEM(SANTA);
-        }
-        else
-            UNLOC_SEM(MUTEX);
-        LOC_SEM(REINDEER);
-        LOC_SEM(MUTEX);
-        PRIN_FLUSHT(args->file, "%d: RD %d: get hitched\n", ++(personnel->action_counter), rdID);
-        personnel->hitched_reindeers++;
-        if(personnel->hitched_reindeers == args->NR)
-            UNLOC_SEM(ALL_HITHCED);
+    personnel->reindeers_back++;
+    if (personnel->reindeers_back == args->NR)
+    {
+        UNLOC_SEM(MUTEX);
+        UNLOC_SEM(SANTA);
+    }
+    else
+        UNLOC_SEM(MUTEX);
+
+    LOC_SEM(REINDEER);
+
+    LOC_SEM(MUTEX);
+    PRIN_FLUSHT(args->file, "%d: RD %d: get hitched\n", ++(personnel->action_counter), rdID);
+    personnel->hitched_reindeers++;
+    if(personnel->hitched_reindeers == args->NR)
+        UNLOC_SEM(ALL_HITHCED);
     UNLOC_SEM(MUTEX);
 }
 
