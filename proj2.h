@@ -35,17 +35,6 @@
         fflush(NULL);             \
 }
 
-#define TEST {\
-    printf("ELF %d\n", *((int **)sems)[ELF]); \
-    printf("SANTA %d\n", *((int **)sems)[SANTA]); \
-    printf("REINDEER %d\n", *((int **)sems)[REINDEER]); \
-    printf("MUTEX %d\n", *((int **)sems)[MUTEX]); \
-    printf("ALL_DONE %d\n", *((int **)sems)[ELVES_OUT]); \
-    printf("ELF_TEX %d\n", *((int **)sems)[ELF_TEX]); \
-    printf("ALL_HITHCED %d\n\n", *((int **)sems)[ALL_HITHCED]); \
-    fflush(NULL);                 \
-}
-
 // Makro pro zamknutí semaforu
 #define LOC_SEM(X) sem_wait(sems[X])
 

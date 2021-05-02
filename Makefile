@@ -5,7 +5,7 @@
 # Makefile pro přeložení druhého projektu IOS
 
 
-CFLAGS  	= -g -std=gnu99 -Wextra -Wall -pedantic -O2 -march=native -flto
+CFLAGS  	= -g -std=gnu99 -rdynamic -Wextra -Wall -pedantic -O2 -march=native -flto
 DEBUGFLAGS	= -Og -g -rdynamic -std=gnu99 -Wextra -Wall -pedantic
 ADDITIONAL	= -lpthread -lrt -pthread
 CC 			= gcc
@@ -15,10 +15,10 @@ CC 			= gcc
 all: proj2
 
 proj2.o: proj2.c proj2.h
-	$(CC) $(DEBUGFLAGS) -c proj2.c $(ADDITIONAL)
+	$(CC) $(CFLAGS) -c proj2.c $(ADDITIONAL)
 
 proj2: proj2.o
-	$(CC) $(DEBUGFLAGS) proj2.o -o proj2 $(ADDITIONAL)
+	$(CC) $(CFLAGS) proj2.o -o proj2 $(ADDITIONAL)
 
 
 clean:
